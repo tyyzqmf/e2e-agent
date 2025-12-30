@@ -26,9 +26,6 @@ An autonomous testing framework that uses the Claude Agent SDK to execute compre
 curl -fsSL https://bun.sh/install | bash
 bun --version
 
-# Install Python 3.7+
-python3 --version
-
 # Install Node.js (for Chrome DevTools MCP)
 node --version
 npx --version
@@ -157,22 +154,34 @@ e2e-agent/
 ├── e2e                         # Unified CLI command (symlink to e2e.ts)
 ├── e2e.ts                      # CLI entry point (Bun/TypeScript)
 ├── src/
-│   ├── agent/                      # Agent-related Python code
-│   │   ├── autonomous_agent_demo.py  # Main entry point
-│   │   ├── agent.py                  # Core agent loop
-│   │   ├── client.py                 # Claude SDK configuration
-│   │   ├── progress.py               # Test progress tracking
-│   │   ├── prompts.py                # Prompt loading utilities
-│   │   ├── skills.py                 # Skills/plugins configuration
-│   │   ├── tools.py                  # Tool permissions
-│   │   ├── mcp_servers.py            # MCP server configuration
-│   │   ├── requirements.txt          # Python dependencies
+│   ├── agent/                      # Agent (TypeScript/Bun)
+│   │   ├── index.ts                  # Main entry point
+│   │   ├── agent.ts                  # Core agent loop
+│   │   ├── client.ts                 # Claude SDK client configuration
+│   │   ├── config.ts                 # Agent configuration constants
+│   │   ├── types/                    # TypeScript type definitions
+│   │   │   ├── index.ts              # Type re-exports
+│   │   │   ├── session.ts            # Session-related types
+│   │   │   ├── test-case.ts          # Test case types
+│   │   │   └── pricing.ts            # Pricing/cost types
+│   │   ├── services/                 # Business logic services
+│   │   │   ├── index.ts              # Service re-exports
+│   │   │   ├── progress.ts           # Test progress tracking
+│   │   │   ├── prompts.ts            # Prompt loading utilities
+│   │   │   ├── pricing.ts            # Cost calculation
+│   │   │   └── token-usage.ts        # Token usage tracking
+│   │   ├── security/                 # Security configuration
+│   │   │   ├── index.ts              # Security re-exports
+│   │   │   ├── tools.ts              # Tool permissions
+│   │   │   ├── hooks.ts              # Context management hooks
+│   │   │   └── mcp-servers.ts        # MCP server configuration
+│   │   ├── skills/                   # Skills/plugins support
+│   │   │   └── index.ts              # Skills loader
 │   │   ├── prompts/                  # Agent prompt templates
 │   │   │   ├── test_planner_prompt.md
 │   │   │   └── test_executor_prompt.md
 │   │   ├── templates/                # Report templates
-│   │   ├── plugins/                  # Agent plugins
-│   │   └── utils/                    # Python utilities
+│   │   └── plugins/                  # Agent plugins
 │   ├── server/                     # Web server (Bun runtime)
 │   │   ├── index.ts                # Web server entry point
 │   │   ├── config.ts               # Configuration management
@@ -237,21 +246,24 @@ Failed tests automatically generate defect reports with:
 For running tests directly without Web UI:
 
 ```bash
-# Activate virtual environment
-source .venv/bin/activate
-
 # Run autonomous agent
-python src/agent/autonomous_agent_demo.py --project-dir ./my_test --model us.anthropic.claude-sonnet-4-5-20250929-v1:0
+bun run src/agent/index.ts --project-dir ./my_test
+
+# Use a specific model
+bun run src/agent/index.ts --project-dir ./my_test --model us.anthropic.claude-sonnet-4-5-20250929-v1:0
 
 # With iteration limit
-python src/agent/autonomous_agent_demo.py --project-dir ./my_test --max-iterations 5
+bun run src/agent/index.ts --project-dir ./my_test --max-iterations 5
+
+# Or use npm script
+bun run agent --project-dir ./my_test
 ```
 
 ### CLI Options
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--project-dir` | Directory for test project | `./autonomous_test_project` |
+| `--project-dir` | Directory for test project | `generations/autonomous_test_project` |
 | `--max-iterations` | Max agent iterations | Unlimited |
 | `--model` | Claude model to use | `us.anthropic.claude-sonnet-4-5-20250929-v1:0` |
 
@@ -263,7 +275,7 @@ The framework implements defense-in-depth security:
 2. **Filesystem Restrictions**: File operations restricted to project directory only
 3. **Tool Permissions**: Explicit allowlist for all tools and MCP servers
 
-See `src/agent/client.py` for implementation details.
+See `src/agent/client.ts` and `src/agent/security/` for implementation details.
 
 ## Browser Automation
 
@@ -331,13 +343,10 @@ source ~/.bashrc  # or ~/.zshrc
 
 ## Requirements
 
-- **Bun** >= 1.0.0 (CLI and Web Service)
-- Python 3.7+ (Agent execution)
+- **Bun** >= 1.0.0 (All TypeScript code - CLI, Web Service, Agent)
 - Node.js and npx (Chrome DevTools MCP)
 - Chrome/Chromium browser
 - AWS Bedrock access OR Anthropic API key
-- claude-agent-sdk >= 0.1.17
-- boto3 >= 1.28.0 (for AWS Bedrock)
 
 ## Development
 
@@ -368,8 +377,8 @@ The Bun services have comprehensive test coverage:
 
 ## License
 
-Internal use.
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
 
 ## Contributing
 
-This is a demonstration framework for autonomous testing with Claude Agent SDK.
+This is a demonstration framework for autonomous testing with Claude Agent SDK. Contributions are welcome!

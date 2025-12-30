@@ -142,10 +142,11 @@ export class TestExecutor {
       // Prepare workspace
       const projectDir = this.prepareWorkspace(job);
 
-      // Build command
+      // Build command - use TypeScript agent instead of Python
       const cmd = [
-        "python3",
-        join(this.config.baseDir, "src", "agent", "autonomous_agent_demo.py"),
+        "bun",
+        "run",
+        join(this.config.baseDir, "src", "agent", "index.ts"),
         "--project-dir",
         projectDir,
         "--max-iterations",

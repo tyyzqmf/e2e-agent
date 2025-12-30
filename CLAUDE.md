@@ -92,16 +92,33 @@ Progress persists via:
 
 ```
 src/
-├── agent/                    # Agent-related Python code
-│   ├── agent.py              # Core agent loop
-│   ├── autonomous_agent_demo.py  # Main entry point
-│   ├── client.py             # Claude SDK client configuration
-│   ├── progress.py           # Test progress tracking
-│   ├── prompts.py            # Prompt loading utilities
+├── agent/                    # Agent (TypeScript/Bun)
+│   ├── index.ts              # Main entry point
+│   ├── agent.ts              # Core agent loop
+│   ├── client.ts             # Claude SDK client configuration
+│   ├── config.ts             # Agent configuration constants
+│   ├── types/                # TypeScript type definitions
+│   │   ├── index.ts          # Type re-exports
+│   │   ├── session.ts        # Session-related types
+│   │   ├── test-case.ts      # Test case types
+│   │   └── pricing.ts        # Pricing/cost types
+│   ├── services/             # Business logic services
+│   │   ├── index.ts          # Service re-exports
+│   │   ├── progress.ts       # Test progress tracking
+│   │   ├── prompts.ts        # Prompt loading utilities
+│   │   ├── pricing.ts        # Cost calculation
+│   │   └── token-usage.ts    # Token usage tracking
+│   ├── security/             # Security configuration
+│   │   ├── index.ts          # Security re-exports
+│   │   ├── tools.ts          # Tool permissions
+│   │   ├── hooks.ts          # Context management hooks
+│   │   └── mcp-servers.ts    # MCP server configuration
+│   ├── skills/               # Skills/plugins support
+│   │   └── index.ts          # Skills loader
 │   ├── prompts/              # Agent prompt templates
 │   ├── templates/            # Report templates
 │   ├── plugins/              # Agent plugins
-│   └── utils/                # Python utilities
+│   └── utils/                # Utility scripts
 ├── server/                   # Web server (Bun runtime)
 │   ├── index.ts              # Web server entry point
 │   ├── routes/               # API routes
@@ -118,11 +135,11 @@ src/
 
 ### Key Components
 
-- **`src/agent/autonomous_agent_demo.py`**: Main entry point, handles CLI args and project setup
-- **`src/agent/agent.py`**: Core agent loop - manages sessions, prompt selection, and auto-continuation
-- **`src/agent/client.py`**: Claude SDK client configuration with security settings and MCP server setup
-- **`src/agent/progress.py`**: Test progress tracking (counts pass/fail/blocked/not_run)
-- **`src/agent/prompts.py`**: Prompt loading and file copying utilities
+- **`src/agent/index.ts`**: Main entry point, handles CLI args and project setup
+- **`src/agent/agent.ts`**: Core agent loop - manages sessions, prompt selection, and auto-continuation
+- **`src/agent/client.ts`**: Claude SDK client configuration with security settings and MCP server setup
+- **`src/agent/services/progress.ts`**: Test progress tracking (counts pass/fail/blocked/not_run)
+- **`src/agent/services/prompts.ts`**: Prompt loading and file copying utilities
 - **`src/agent/prompts/`**: Contains agent prompts and app_spec.txt
 
 ### Security Model (Defense in Depth)
@@ -133,12 +150,12 @@ The framework implements three security layers:
 2. **Filesystem Restrictions**: File operations restricted to project directory only (via `cwd` setting)
 3. **Permissions**: All tools explicitly allowed via `.claude_settings.json`
 
-See `src/agent/client.py:55-193` for implementation details.
+See `src/agent/security/tools.ts` and `src/agent/client.ts` for implementation details.
 
 ### Browser Automation
 
 Uses **Chrome DevTools MCP** instead of Puppeteer for browser automation:
-- Configured in `client.py` with headless Chrome
+- Configured in `src/agent/security/mcp-servers.ts` with headless Chrome
 - Includes sandbox flags for containerized environments: `--no-sandbox`, `--disable-setuid-sandbox`, `--disable-dev-shm-usage`
 - Available tools: navigate, screenshot, click, fill, wait_for, network inspection, console logs, etc.
 
@@ -214,7 +231,7 @@ The default is ~50 test cases. To change:
 
 - **First session** (test planning): Takes 5-10 minutes to generate detailed test cases
 - **Subsequent sessions**: Each test execution can take 5-15 minutes depending on complexity
-- **Auto-continuation**: 3-second delay between sessions (configurable in `src/agent/agent.py:30`)
+- **Auto-continuation**: 3-second delay between sessions (configurable in `src/agent/config.ts`)
 - Tests run autonomously until completion or max-iterations reached
 
 ## Key Design Patterns
@@ -222,7 +239,7 @@ The default is ~50 test cases. To change:
 ### Progress Tracking
 - `test_cases.json` is the single source of truth
 - Status values: "Not Run", "Pass", "Fail", "Blocked"
-- Progress displayed after each session via `src/agent/progress.py`
+- Progress displayed after each session via `src/agent/services/progress.ts`
 
 ### Evidence Collection
 Every test execution captures:
@@ -241,15 +258,30 @@ Failed tests automatically generate defect reports with:
 
 ## Dependencies
 
-- **Python 3.7+**
-- **claude-agent-sdk >= 0.1.17**
-- **boto3 >= 1.28.0** (for AWS Bedrock)
+- **Bun >= 1.0** (runtime for all TypeScript code) - https://bun.sh
 - **Chrome/Chromium** (for browser automation)
 - **Node.js/npx** (for chrome-devtools-mcp)
-- **Bun** (for web service) - https://bun.sh
+- **AWS CLI** (optional, for AWS Bedrock credential validation)
+
+### NPM Dependencies
+- `@aws-sdk/client-sts` - AWS credential validation
+- `@aws-sdk/credential-providers` - AWS credential loading
 
 ## Model Configuration
 
 Default model: `us.anthropic.claude-sonnet-4-5-20250929-v1:0` (inference profile ID for AWS Bedrock)
 
-This format works for both AWS Bedrock and Anthropic API. See `src/agent/autonomous_agent_demo.py:26` for default configuration.
+This format works for both AWS Bedrock and Anthropic API. See `src/agent/config.ts` for default configuration.
+
+## Running the Agent Directly
+
+```bash
+# Show help
+bun run src/agent/index.ts --help
+
+# Run with project directory
+bun run src/agent/index.ts --project-dir ./my_test_project
+
+# Or use npm script
+bun run agent --project-dir ./my_test_project
+```

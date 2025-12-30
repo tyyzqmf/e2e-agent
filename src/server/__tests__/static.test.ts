@@ -66,8 +66,10 @@ describe("Static Routes", () => {
   describe("GET /status/:id", () => {
     it("should handle request with job ID parameter", async () => {
       const handler = routes["GET /status/:id"];
-      const req = new Request("http://localhost/status/test-job-123");
-      (req as any).params = { id: "test-job-123" };
+      // Use valid UUID format (required by the handler)
+      const validUuid = "12345678-1234-4abc-8def-123456789012";
+      const req = new Request(`http://localhost/status/${validUuid}`);
+      (req as any).params = { id: validUuid };
 
       const response = await handler(req);
 
@@ -76,8 +78,10 @@ describe("Static Routes", () => {
 
     it("should return Response for non-existent template", async () => {
       const handler = routes["GET /status/:id"];
-      const req = new Request("http://localhost/status/job-id");
-      (req as any).params = { id: "job-id" };
+      // Use valid UUID format (required by the handler)
+      const validUuid = "12345678-1234-4123-8123-123456789abc";
+      const req = new Request(`http://localhost/status/${validUuid}`);
+      (req as any).params = { id: validUuid };
 
       const response = await handler(req);
 
@@ -217,7 +221,8 @@ describe("Template Variable Substitution", () => {
     const routes = buildStaticRoutes();
     const handler = routes["GET /status/:id"];
 
-    const jobId = "abc12345-test-job";
+    // Use valid UUID format (required by the handler)
+    const jobId = "abc12345-1234-4567-8901-123456789abc";
     const req = new Request(`http://localhost/status/${jobId}`);
     (req as any).params = { id: jobId };
 
@@ -309,7 +314,8 @@ describe("Template Serving", () => {
     const routes = buildStaticRoutes();
     const handler = routes["GET /status/:id"];
 
-    const jobId = "test-job-12345";
+    // Use valid UUID format (required by the handler)
+    const jobId = "12345678-1234-4567-8901-abcdef123456";
     const req = new Request(`http://localhost/status/${jobId}`);
     (req as any).params = { id: jobId };
 

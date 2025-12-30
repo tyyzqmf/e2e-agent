@@ -10,7 +10,13 @@
     "test:cli": "./tests/test_e2e_cli.sh && ./tests/test_e2e_functions.sh",
     "test:all": "bun test && ./tests/test_e2e_cli.sh && ./tests/test_e2e_functions.sh",
     "typecheck": "tsc --noEmit",
-    "lint": "bun run typecheck"
+    "lint": "bun run typecheck",
+    "agent": "bun run src/agent/index.ts",
+    "agent:help": "bun run src/agent/index.ts --help"
+  },
+  "dependencies": {
+    "@aws-sdk/client-sts": "^3.700.0",
+    "@aws-sdk/credential-providers": "^3.700.0"
   },
   "devDependencies": {
     "@types/bun": "latest",
