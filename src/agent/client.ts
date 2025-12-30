@@ -7,6 +7,8 @@
 
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { GetCallerIdentityCommand, STSClient } from "@aws-sdk/client-sts";
+import { fromNodeProviderChain } from "@aws-sdk/credential-providers";
 import { type Subprocess, spawn } from "bun";
 import type { ClientOptions } from "./config.ts";
 import {
@@ -101,27 +103,19 @@ function getAwsRegion(): string {
 
 /**
  * Validate AWS credentials are available
- * Uses STS GetCallerIdentity to verify credentials work
+ * Uses fromNodeProviderChain for credential resolution and STS GetCallerIdentity to verify
  */
 async function validateAwsCredentials(): Promise<void> {
 	const region = getAwsRegion();
 
 	try {
-		// Try to use AWS CLI to verify credentials
-		const proc = spawn({
-			cmd: ["aws", "sts", "get-caller-identity", "--region", region],
-			stdout: "pipe",
-			stderr: "pipe",
-		});
+		// Use credential provider chain (env vars, ~/.aws/credentials, EC2/ECS metadata, SSO, etc.)
+		const credentials = fromNodeProviderChain({ clientConfig: { region } });
 
-		const exitCode = await proc.exited;
-		if (exitCode !== 0) {
-			const stderr = await new Response(proc.stderr).text();
-			throw new Error(stderr);
-		}
+		// Validate credentials by calling STS GetCallerIdentity
+		const stsClient = new STSClient({ region, credentials });
+		const identity = await stsClient.send(new GetCallerIdentityCommand({}));
 
-		const stdout = await new Response(proc.stdout).text();
-		const identity = JSON.parse(stdout);
 		console.log(`AWS credentials validated (Account: ${identity.Account})`);
 	} catch (error) {
 		throw new Error(
@@ -130,7 +124,7 @@ async function validateAwsCredentials(): Promise<void> {
 				"  1. AWS CLI: aws configure\n" +
 				"  2. Environment variables: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY\n" +
 				"  3. IAM role (if running on EC2/ECS/Lambda)\n\n" +
-				`Error: ${error}`,
+				`Error: ${error instanceof Error ? error.message : error}`,
 		);
 	}
 }
