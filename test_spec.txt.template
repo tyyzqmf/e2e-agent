@@ -1,0 +1,176 @@
+# [Application Name] Test Specification - v[X.Y.Z]
+
+## Application Overview
+[Application description: main purpose, key features, technology stack]
+
+Example: "[Your App] is a platform for [main functionality]. The platform supports [feature 1], [feature 2], and [feature 3]."
+
+## Environment Configuration
+
+### Application Access
+- **Application URL**: https://staging.example.com (or your application URL)
+- **API Base URL**: https://api.staging.example.com (if applicable)
+
+### Test Accounts
+Provide test account credentials for different user roles:
+
+- **Admin User**:
+  - Username: admin@example.com
+  - Password: AdminP@ss123
+
+- **Standard User**:
+  - Username: testuser@example.com
+  - Password: TestP@ss123
+
+### Browser Settings
+- **Default Viewport**: 1920x1080 (desktop)
+- **Mobile Viewport**: 375x667 (mobile)
+- **Default Timeout**: 30000ms (30 seconds)
+
+### Test Data
+- **Feature Flags**: (list any feature flags needed)
+- **Sample Data**: (any test data files, sample uploads, etc.)
+- **Third-party Services**: (any external services or sandboxes, e.g., payment sandbox)
+
+## Test Scope
+
+### 1. [Module Name 1]
+
+#### [Test Case Name] (TC 1.1)
+- Navigate to [Menu/Page Name]
+- Click [BUTTON NAME] button
+- Enter [field name]: "[value]"
+- Select [field name]: [option]
+- Upload [file type] file
+- Submit creation
+- **Expected Results**:
+  - [Action] succeeds and returns to list page
+  - New [item] appears in the list
+  - [Status/Process] shows as "[EXPECTED_STATUS]"
+
+### 2. [Module Name 2]
+
+#### [Test Case Name] (TC 2.1)
+- Navigate to [Menu/Page Name]
+- Click [BUTTON NAME] button
+- Enter [field name]: "[value]"
+- Select [field name]: [option]
+- Set [parameter]: [value]
+- Submit creation
+- **Expected Results**:
+  - Creation succeeds
+  - [Resource] status becomes "[READY/RUNNING]"
+  - Verify [specific behavior or output]
+
+### 3. [Module Name 3]
+
+#### [Test Case Name] (TC 3.1)
+- Navigate to [Menu/Page Name]
+- Click [BUTTON NAME] button
+- Modify [file/configuration]:
+  - Set: [parameter] = [value]
+  - Replace [placeholder] with [actual value]
+- Execute [action/operation]
+- **Expected Results**:
+  - [Operation] completes without errors (~[X] minutes)
+  - [Results/Metrics] are recorded successfully
+
+### 4. [Module Name 4]
+
+#### [Test Case Name] (TC 4.1)
+- Navigate to [Menu/Page Name]
+- Create [resource] with:
+  - [Parameter 1]: [value]
+  - [Parameter 2]: [value]
+- Submit creation
+- **Expected Results**:
+  - [Resource] status shows as "[RUNNING/READY]"
+  - Execute: [verification command]
+  - Verify [expected output or state]
+
+### 5. [Module Name 5]
+
+#### [Test Case Name] (TC 5.1)
+- Navigate to [Menu/Page Name]
+- Create [task/test]:
+  - Select [option]: [value]
+  - Set [parameters]: [configuration]
+- Wait for completion
+- **Expected Results**:
+  - [Task] completes successfully
+  - [Results/Metrics] are displayed correctly
+
+### 6. [Module Name 6]
+
+#### [Test Case Name] (TC 6.1)
+- Navigate to [Settings] menu
+- Modify "[Setting Name]": [new value]
+- Navigate to [Related Page]
+- **Expected Results**:
+  - Configuration changes saved successfully
+  - [UI element] updated with new values
+
+## Browser Compatibility
+- Chrome (latest), Firefox (latest), Safari (latest), Edge (latest)
+- Tests will run primarily in Chrome with headless mode
+
+## Non-Functional Requirements
+
+### Performance
+- [Operation 1] time: < [X] minutes
+- [Operation 2] time: < [X] minutes
+- API response time: < [X] seconds
+
+### Security
+- HTTPS enforcement
+- Secure credential storage
+- Access control and authentication
+
+### Usability
+- Clear error messages
+- Progress indicators for long operations
+- Easy access to logs and metrics
+
+### Scalability
+- Support for multiple [resources]
+- Auto-scaling capabilities
+
+## Testing Priorities
+
+### P1 (Critical) - Must Test First
+- [Critical test] (TC X.X)
+- [Core functionality] (TC X.X)
+
+### P2 (High) - Test Second
+- [Important feature] (TC X.X)
+- [Secondary workflow] (TC X.X)
+
+### P3 (Medium) - Test Third
+- [Configuration] (TC X.X)
+- UI/UX and error handling
+
+## Success Criteria
+
+### Functional Coverage
+- All [resources] create/operate successfully
+- All [operations] complete without errors
+- [Integrations] function correctly
+
+### Quality Metrics
+- 0 critical defects
+- < 3 high-priority defects
+- Pass rate > 95% for P1 tests
+- Pass rate > 90% for P2 tests
+
+### User Experience
+- Intuitive workflow
+- Clear status indicators
+- Comprehensive error messages
+
+## Notes
+- Some operations may take [X-Y] minutes
+- Tests can run in parallel where possible
+- Ensure proper cleanup after completion
+- Document defects with screenshots and logs
+
+---

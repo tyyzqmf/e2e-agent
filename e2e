@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# E2E Testing Framework CLI
+#
+# This script launches the Bun-based CLI.
+#
+# Usage: e2e <command> [subcommand] [options]
+
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# Check if Bun is available
+if ! command -v bun &> /dev/null; then
+    echo "Error: Bun is not installed."
+    echo "Install Bun with: curl -fsSL https://bun.sh/install | bash"
+    exit 1
+fi
+
+exec bun run "$SCRIPT_DIR/e2e.ts" "$@"

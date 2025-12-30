@@ -1,0 +1,19 @@
+{
+  "name": "e2e-agent-web",
+  "version": "2.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "bun run src/server/index.ts",
+    "dev": "bun --watch run src/server/index.ts",
+    "test": "bun test",
+    "test:bun": "bun test src/server/__tests__",
+    "test:cli": "./tests/test_e2e_cli.sh && ./tests/test_e2e_functions.sh",
+    "test:all": "bun test && ./tests/test_e2e_cli.sh && ./tests/test_e2e_functions.sh",
+    "typecheck": "tsc --noEmit",
+    "lint": "bun run typecheck"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.0.0"
+  }
+}

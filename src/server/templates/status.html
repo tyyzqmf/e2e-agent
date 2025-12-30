@@ -1,0 +1,2021 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Status Monitor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --col-void: #2A2A2A;
+            --col-paper: #F5F5F3;
+            --col-ink: #3A3A3A;
+            --col-accent: #E85D4A;
+            --col-grid: #D8D8D6;
+            --col-shadow: rgba(0, 0, 0, 0.06);
+            --col-success: #52C67A;
+            --col-warning: #F5A623;
+
+            --font-display: 'Archivo Black', sans-serif;
+            --font-mono: 'IBM Plex Mono', monospace;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-mono);
+            background: var(--col-paper);
+            color: var(--col-ink);
+            line-height: 1.5;
+            overflow-x: hidden;
+        }
+
+        /* Grid Background */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(var(--col-grid) 1px, transparent 1px),
+                linear-gradient(90deg, var(--col-grid) 1px, transparent 1px);
+            background-size: 40px 40px;
+            opacity: 0.4;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 30px;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 35px;
+            animation: slideDown 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header-title {
+            font-family: var(--font-display);
+            font-size: clamp(1.8rem, 5vw, 2.5rem);
+            text-transform: capitalize;
+            letter-spacing: -0.02em;
+            line-height: 1;
+        }
+
+        .back-btn {
+            padding: 12px 24px;
+            background: transparent;
+            border: 1px solid var(--col-ink);
+            color: var(--col-ink);
+            font-family: var(--font-mono);
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: capitalize;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .back-btn:hover {
+            background: var(--col-void);
+            border-color: var(--col-void);
+            color: var(--col-paper);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px var(--col-shadow);
+        }
+
+        /* Loading */
+        .loading-container {
+            text-align: center;
+            padding: 120px 0;
+        }
+
+        .loading-spinner {
+            width: 80px;
+            height: 80px;
+            border: 6px solid var(--col-grid);
+            border-top-color: var(--col-accent);
+            border-radius: 50%;
+            animation: spin 1s cubic-bezier(0.68, -0.55, 0.27, 1.55) infinite;
+            margin: 0 auto 30px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 11px;
+            letter-spacing: 0.2em;
+            text-transform: capitalize;
+            font-weight: 600;
+        }
+
+        /* Alert */
+        #alertContainer {
+            margin-bottom: 40px;
+        }
+
+        .alert {
+            padding: 20px 25px;
+            border-left: 4px solid;
+            margin-bottom: 30px;
+            font-size: 13px;
+            animation: slideRight 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideRight {
+            from {
+                opacity: 0;
+                transform: translateX(-40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .alert-success {
+            background: rgba(0, 255, 65, 0.1);
+            border-color: var(--col-success);
+            color: var(--col-ink);
+        }
+
+        .alert-error {
+            background: rgba(255, 46, 0, 0.1);
+            border-color: var(--col-accent);
+            color: var(--col-accent);
+        }
+
+        /* Job Container */
+        #jobContainer {
+            animation: fadeIn 1s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Tabs */
+        .tabs-container {
+            margin-bottom: 25px;
+        }
+
+        .tabs-header {
+            display: flex;
+            gap: 0;
+            border-bottom: 3px solid var(--col-void);
+        }
+
+        .tab-btn {
+            padding: 14px 28px;
+            background: transparent;
+            border: none;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            cursor: pointer;
+            color: var(--col-ink);
+            opacity: 0.6;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+        }
+
+        .tab-btn:hover {
+            opacity: 1;
+            background: rgba(0, 0, 0, 0.03);
+        }
+
+        .tab-btn.active {
+            opacity: 1;
+            color: var(--col-accent);
+        }
+
+        .tab-btn.active::after {
+            content: "";
+            position: absolute;
+            bottom: -3px;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: var(--col-accent);
+        }
+
+        .tab-btn .tab-badge {
+            display: inline-block;
+            margin-left: 8px;
+            padding: 2px 8px;
+            font-size: 9px;
+            background: var(--col-accent);
+            color: white;
+            border-radius: 10px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* Status Panel */
+        .status-panel {
+            background: var(--col-void);
+            color: var(--col-paper);
+            padding: 30px 35px;
+            margin-bottom: 25px;
+            position: relative;
+        }
+
+        .status-panel::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--col-accent);
+        }
+
+        .status-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .status-indicator {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+        }
+
+        .status-indicator.queued {
+            background: var(--col-grid);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .status-indicator.running {
+            background: var(--col-accent);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.95); }
+        }
+
+        .status-indicator.completed {
+            background: var(--col-success);
+        }
+
+        .status-indicator.failed {
+            background: var(--col-accent);
+        }
+
+        .status-indicator.stopped,
+        .status-indicator.cancelled {
+            background: var(--col-warning);
+        }
+
+        .status-header h2 {
+            font-family: var(--font-display);
+            font-size: 1.3rem;
+            text-transform: capitalize;
+            letter-spacing: -0.01em;
+        }
+
+        /* Info Grid */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .info-item {
+            padding: 18px 20px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .info-label {
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.15em;
+            text-transform: capitalize;
+            color: var(--col-accent);
+            margin-bottom: 12px;
+        }
+
+        .info-value {
+            font-size: 13px;
+            word-break: break-all;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: capitalize;
+            border: 1px solid;
+        }
+
+        .status-badge.queued {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .status-badge.running {
+            background: rgba(255, 46, 0, 0.2);
+            border-color: var(--col-accent);
+            color: var(--col-accent);
+        }
+
+        .status-badge.completed {
+            background: rgba(0, 255, 65, 0.2);
+            border-color: var(--col-success);
+            color: var(--col-success);
+        }
+
+        .status-badge.failed {
+            background: rgba(255, 46, 0, 0.2);
+            border-color: var(--col-accent);
+            color: var(--col-accent);
+        }
+
+        .status-badge.stopped,
+        .status-badge.cancelled {
+            background: rgba(255, 184, 0, 0.2);
+            border-color: var(--col-warning);
+            color: var(--col-warning);
+        }
+
+        .error-message {
+            padding: 20px 25px;
+            background: rgba(255, 46, 0, 0.15);
+            border-left: 4px solid var(--col-accent);
+            color: var(--col-accent);
+            font-size: 12px;
+            margin-top: 30px;
+        }
+
+        /* Action Bar */
+        .action-bar {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+            padding: 20px 0;
+            animation: fadeIn 1s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: 1px solid;
+            font-family: var(--font-mono);
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: capitalize;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: transparent;
+            border-color: var(--col-ink);
+            color: var(--col-ink);
+        }
+
+        .btn-primary:hover {
+            background: var(--col-void);
+            border-color: var(--col-void);
+            color: var(--col-paper);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px var(--col-shadow);
+        }
+
+        .btn-danger {
+            background: transparent;
+            border-color: var(--col-accent);
+            color: var(--col-accent);
+        }
+
+        .btn-danger:hover {
+            background: var(--col-accent);
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .btn-success {
+            background: transparent;
+            border-color: var(--col-success);
+            color: var(--col-success);
+        }
+
+        .btn-success:hover {
+            background: var(--col-success);
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Test Spec Panel */
+        .test-spec-panel {
+            padding: 30px 35px;
+            background: rgba(0, 0, 0, 0.025);
+            border-left: 3px solid var(--col-ink);
+            animation: fadeIn 1s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+        }
+
+        .test-spec-panel h3 {
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            text-transform: capitalize;
+            letter-spacing: -0.01em;
+            margin-bottom: 20px;
+        }
+
+        .test-spec-content {
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.04);
+            border: 1px solid var(--col-grid);
+            font-size: 12px;
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .test-spec-content::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        .test-spec-content::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        .test-spec-content::-webkit-scrollbar-thumb {
+            background: var(--col-accent);
+        }
+
+        /* Progress Panel */
+        .progress-panel {
+            background: rgba(0, 0, 0, 0.025);
+            padding: 30px 35px;
+            border-left: 3px solid var(--col-ink);
+            margin-bottom: 25px;
+            animation: fadeIn 1s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 18px;
+            border-bottom: 2px solid var(--col-grid);
+        }
+
+        .progress-title {
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            text-transform: capitalize;
+            letter-spacing: -0.01em;
+        }
+
+        .progress-summary {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: capitalize;
+            color: var(--col-accent);
+        }
+
+        /* Progress Stats */
+        .progress-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+
+        .progress-stat {
+            padding: 15px 18px;
+            background: rgba(0, 0, 0, 0.04);
+            border: 1px solid var(--col-grid);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .progress-stat-label {
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: 0.12em;
+            text-transform: capitalize;
+            opacity: 0.7;
+        }
+
+        .progress-stat-value {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            line-height: 1;
+        }
+
+        .progress-stat.pass .progress-stat-value {
+            color: var(--col-success);
+        }
+
+        .progress-stat.fail .progress-stat-value {
+            color: var(--col-accent);
+        }
+
+        .progress-stat.blocked .progress-stat-value {
+            color: var(--col-warning);
+        }
+
+        .progress-stat.running .progress-stat-value {
+            color: var(--col-accent);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        /* Test Cases Table */
+        .test-cases-container {
+            background: rgba(0, 0, 0, 0.04);
+            border: 1px solid var(--col-grid);
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .test-cases-container::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        .test-cases-container::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        .test-cases-container::-webkit-scrollbar-thumb {
+            background: var(--col-accent);
+        }
+
+        .test-cases-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .test-cases-table thead {
+            position: sticky;
+            top: 0;
+            background: var(--col-void);
+            color: var(--col-paper);
+            z-index: 1;
+        }
+
+        .test-cases-table th {
+            padding: 12px 15px;
+            text-align: left;
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: 0.12em;
+            text-transform: capitalize;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .test-cases-table tbody tr {
+            border-bottom: 1px solid var(--col-grid);
+            transition: background 0.2s ease;
+        }
+
+        .test-cases-table tbody tr:hover {
+            background: rgba(0, 0, 0, 0.03);
+        }
+
+        .test-cases-table tbody tr.current-case {
+            background: rgba(232, 93, 74, 0.08);
+            border-left: 3px solid var(--col-accent);
+        }
+
+        .test-cases-table td {
+            padding: 12px 15px;
+            font-size: 11px;
+        }
+
+        .test-case-id {
+            font-weight: 600;
+            font-family: var(--font-mono);
+        }
+
+        .test-case-name {
+            color: var(--col-ink);
+            line-height: 1.4;
+        }
+
+        .case-status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            font-size: 8px;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: capitalize;
+            border: 1px solid;
+        }
+
+        .case-status-badge.not-run {
+            background: var(--col-ink);
+            border-color: var(--col-ink);
+            color: var(--col-paper);
+        }
+
+        .case-status-badge.running {
+            background: rgba(232, 93, 74, 0.15);
+            border-color: var(--col-accent);
+            color: var(--col-accent);
+            animation: glow 2s ease-in-out infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 8px rgba(232, 93, 74, 0.3); }
+            50% { box-shadow: 0 0 16px rgba(232, 93, 74, 0.6); }
+        }
+
+        .case-status-badge.pass {
+            background: rgba(82, 198, 122, 0.15);
+            border-color: var(--col-success);
+            color: var(--col-success);
+        }
+
+        .case-status-badge.fail {
+            background: rgba(232, 93, 74, 0.15);
+            border-color: var(--col-accent);
+            color: var(--col-accent);
+        }
+
+        .case-status-badge.blocked {
+            background: rgba(245, 166, 35, 0.15);
+            border-color: var(--col-warning);
+            color: var(--col-warning);
+        }
+
+        .empty-progress {
+            padding: 60px 40px;
+            text-align: center;
+            color: var(--col-ink);
+            opacity: 0.5;
+            font-size: 11px;
+            letter-spacing: 0.1em;
+            text-transform: capitalize;
+        }
+
+        /* Cost Panel */
+        .cost-panel {
+            background: rgba(0, 0, 0, 0.025);
+            padding: 30px 35px;
+            border-left: 3px solid var(--col-ink);
+            margin-bottom: 25px;
+            animation: fadeIn 1s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both;
+        }
+
+        .cost-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 18px;
+            border-bottom: 2px solid var(--col-grid);
+        }
+
+        .cost-title {
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            text-transform: capitalize;
+            letter-spacing: -0.01em;
+        }
+
+        .cost-total {
+            font-family: var(--font-display);
+            font-size: 1.8rem;
+            color: var(--col-accent);
+            line-height: 1;
+        }
+
+        .cost-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+        }
+
+        .cost-stat {
+            padding: 15px 18px;
+            background: rgba(0, 0, 0, 0.04);
+            border: 1px solid var(--col-grid);
+        }
+
+        .cost-stat-label {
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: 0.12em;
+            text-transform: capitalize;
+            opacity: 0.7;
+            margin-bottom: 8px;
+        }
+
+        .cost-stat-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--col-ink);
+        }
+
+        .cost-stat-value .accent {
+            color: var(--col-accent);
+        }
+
+        /* Logs Panel */
+        .logs-panel {
+            background: rgba(0, 0, 0, 0.025);
+            padding: 30px 35px;
+            border-left: 3px solid var(--col-ink);
+            margin-bottom: 25px;
+            animation: fadeIn 1s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both;
+        }
+
+        .logs-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 18px;
+            border-bottom: 2px solid var(--col-grid);
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .logs-title {
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            text-transform: capitalize;
+            letter-spacing: -0.01em;
+        }
+
+        .logs-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .logs-control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logs-control-group label {
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            opacity: 0.7;
+        }
+
+        .logs-control-group select,
+        .logs-control-group input[type="checkbox"] {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            padding: 6px 10px;
+            border: 1px solid var(--col-grid);
+            background: white;
+            cursor: pointer;
+        }
+
+        .logs-control-group input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--col-accent);
+        }
+
+        .btn-sm {
+            padding: 8px 16px;
+            font-size: 9px;
+        }
+
+        .logs-content {
+            background: var(--col-void);
+            color: #E0E0E0;
+            padding: 20px;
+            font-size: 11px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 500px;
+            overflow-y: auto;
+            font-family: var(--font-mono);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .logs-content::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        .logs-content::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .logs-content::-webkit-scrollbar-thumb {
+            background: var(--col-accent);
+        }
+
+        .logs-empty {
+            color: rgba(255, 255, 255, 0.5);
+            font-style: italic;
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .logs-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+            font-size: 10px;
+            color: var(--col-ink);
+            opacity: 0.6;
+        }
+
+        .logs-status .auto-refresh-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .logs-status .auto-refresh-indicator.active {
+            color: var(--col-success);
+            opacity: 1;
+        }
+
+        .logs-status .auto-refresh-indicator .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .logs-status .auto-refresh-indicator.active .dot {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        /* Test Cases Detail Panel */
+        .test-cases-detail-panel {
+            background: rgba(0, 0, 0, 0.025);
+            padding: 30px 35px;
+            border-left: 3px solid var(--col-ink);
+        }
+
+        .test-case-card {
+            background: white;
+            border: 1px solid var(--col-grid);
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .test-case-card:last-child {
+            margin-bottom: 0;
+        }
+
+        .test-case-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 22px;
+            background: var(--col-void);
+            color: var(--col-paper);
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .test-case-header:hover {
+            background: #3a3a3a;
+        }
+
+        .test-case-header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .test-case-id {
+            font-weight: 600;
+            font-size: 12px;
+            padding: 4px 10px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 3px;
+        }
+
+        .test-case-title {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .test-case-header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .test-case-priority {
+            font-size: 10px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+
+        .test-case-priority.p1 {
+            background: rgba(232, 93, 74, 0.3);
+            border-color: var(--col-accent);
+        }
+
+        .test-case-priority.p2 {
+            background: rgba(245, 166, 35, 0.3);
+            border-color: var(--col-warning);
+        }
+
+        .test-case-expand {
+            font-size: 14px;
+            transition: transform 0.3s ease;
+        }
+
+        .test-case-card.expanded .test-case-expand {
+            transform: rotate(180deg);
+        }
+
+        .test-case-body {
+            display: none;
+            padding: 25px;
+            border-top: 1px solid var(--col-grid);
+        }
+
+        .test-case-card.expanded .test-case-body {
+            display: block;
+        }
+
+        .test-case-section {
+            margin-bottom: 20px;
+        }
+
+        .test-case-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .test-case-section-title {
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--col-accent);
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--col-grid);
+        }
+
+        .test-case-section-content {
+            font-size: 12px;
+            line-height: 1.7;
+            color: var(--col-ink);
+        }
+
+        .test-case-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.03);
+            border-radius: 4px;
+        }
+
+        .test-case-meta-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .test-case-meta-label {
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            opacity: 0.6;
+        }
+
+        .test-case-meta-value {
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .test-case-list {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .test-case-list li {
+            margin-bottom: 8px;
+            line-height: 1.6;
+        }
+
+        .test-case-list li:last-child {
+            margin-bottom: 0;
+        }
+
+        .test-case-result {
+            padding: 15px;
+            border-radius: 4px;
+            font-size: 12px;
+            line-height: 1.7;
+        }
+
+        .test-case-result.pass {
+            background: rgba(82, 198, 122, 0.1);
+            border-left: 3px solid var(--col-success);
+        }
+
+        .test-case-result.fail {
+            background: rgba(232, 93, 74, 0.1);
+            border-left: 3px solid var(--col-accent);
+        }
+
+        .test-case-result.blocked {
+            background: rgba(245, 166, 35, 0.1);
+            border-left: 3px solid var(--col-warning);
+        }
+
+        .test-case-result.not-run {
+            background: rgba(58, 58, 58, 0.08);
+            border-left: 3px solid var(--col-ink);
+            color: var(--col-ink);
+        }
+
+        .test-case-screenshots {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .test-case-screenshot {
+            padding: 8px 14px;
+            background: rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--col-grid);
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .test-case-screenshot:hover {
+            background: var(--col-void);
+            color: var(--col-paper);
+        }
+
+        .empty-test-cases {
+            text-align: center;
+            padding: 60px 40px;
+            color: var(--col-ink);
+            opacity: 0.5;
+            font-size: 12px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 30px 20px;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .status-panel,
+            .test-spec-panel,
+            .progress-panel,
+            .cost-panel {
+                padding: 25px 20px;
+            }
+
+            .cost-header {
+                flex-direction: column;
+                gap: 10px;
+                align-items: flex-start;
+            }
+
+            .action-bar {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                text-align: center;
+            }
+
+            .progress-header {
+                flex-direction: column;
+                gap: 10px;
+                align-items: flex-start;
+            }
+
+            .progress-stats {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .test-cases-container {
+                overflow-x: auto;
+            }
+
+            .test-cases-table {
+                min-width: 500px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1 class="header-title">Job Status</h1>
+            <a href="/" class="back-btn">New Job</a>
+        </div>
+
+        <!-- Alert Container -->
+        <div id="alertContainer"></div>
+
+        <!-- Loading -->
+        <div id="loadingContainer" class="loading-container">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Loading Status...</div>
+        </div>
+
+        <!-- Job Container -->
+        <div id="jobContainer" style="display: none;">
+            <!-- Action Bar -->
+            <div class="action-bar">
+                <button class="btn btn-primary" onclick="loadJobStatus()">
+                    Refresh Status
+                </button>
+                <button id="stopBtn" class="btn btn-danger" onclick="stopJob()" style="display: none;">
+                    Stop Job
+                </button>
+                <button id="deleteBtn" class="btn btn-danger" onclick="deleteJob()" style="display: none;">
+                    Delete Job
+                </button>
+                <a id="downloadReportBtn" class="btn btn-success" style="display: none;">
+                    Download Report
+                </a>
+            </div>
+
+            <!-- Tabs -->
+            <div class="tabs-container">
+                <div class="tabs-header">
+                    <button class="tab-btn active" onclick="switchTab('overview')" data-tab="overview">
+                        Overview
+                    </button>
+                    <button class="tab-btn" onclick="switchTab('testcases')" data-tab="testcases">
+                        Test Cases
+                        <span id="testCasesCountBadge" class="tab-badge" style="display: none;">0</span>
+                    </button>
+                    <button class="tab-btn" onclick="switchTab('logs')" data-tab="logs">
+                        Logs
+                        <span id="logsRunningBadge" class="tab-badge" style="display: none;">Live</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Overview Tab Content -->
+            <div id="tab-overview" class="tab-content active">
+            <!-- Status Panel -->
+            <div class="status-panel">
+                <div class="status-header">
+                    <div id="statusIndicator" class="status-indicator"></div>
+                    <h2 id="panelTitle">Job Monitor</h2>
+                </div>
+
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Job ID</div>
+                        <div class="info-value" id="jobId"></div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Status</div>
+                        <div class="info-value">
+                            <span id="jobStatus" class="status-badge"></span>
+                        </div>
+                    </div>
+                    <div class="info-item" id="startedItem" style="display: none;">
+                        <div class="info-label">Started At</div>
+                        <div class="info-value" id="startedAt"></div>
+                    </div>
+                    <div class="info-item" id="completedItem" style="display: none;">
+                        <div class="info-label">Completed At</div>
+                        <div class="info-value" id="completedAt"></div>
+                    </div>
+                </div>
+
+                <div id="errorContainer" style="display: none;">
+                    <div class="error-message">
+                        <strong>ERROR:</strong> <span id="errorMessage"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress Panel -->
+            <div id="progressPanel" class="progress-panel" style="display: none;">
+                <div class="progress-header">
+                    <h3 class="progress-title">Test Progress</h3>
+                    <div class="progress-summary" id="progressSummary">0 / 0 Cases</div>
+                </div>
+
+                <div class="progress-stats">
+                    <div class="progress-stat pass">
+                        <span class="progress-stat-label">Pass</span>
+                        <span class="progress-stat-value" id="statPass">0</span>
+                    </div>
+                    <div class="progress-stat fail">
+                        <span class="progress-stat-label">Fail</span>
+                        <span class="progress-stat-value" id="statFail">0</span>
+                    </div>
+                    <div class="progress-stat blocked">
+                        <span class="progress-stat-label">Blocked</span>
+                        <span class="progress-stat-value" id="statBlocked">0</span>
+                    </div>
+                    <div class="progress-stat running">
+                        <span class="progress-stat-label">Running</span>
+                        <span class="progress-stat-value" id="statRunning">0</span>
+                    </div>
+                    <div class="progress-stat">
+                        <span class="progress-stat-label">Not Run</span>
+                        <span class="progress-stat-value" id="statNotRun">0</span>
+                    </div>
+                </div>
+
+                <div id="testCasesContainer" class="test-cases-container">
+                    <div class="empty-progress">No test cases available</div>
+                </div>
+            </div>
+
+            <!-- Cost Panel -->
+            <div id="costPanel" class="cost-panel" style="display: none;">
+                <div class="cost-header">
+                    <h3 class="cost-title">Cost Statistics</h3>
+                    <div class="cost-total" id="costTotal">$0.00</div>
+                </div>
+
+                <div class="cost-stats">
+                    <div class="cost-stat">
+                        <div class="cost-stat-label">Input Tokens</div>
+                        <div class="cost-stat-value" id="costInputTokens">0</div>
+                    </div>
+                    <div class="cost-stat">
+                        <div class="cost-stat-label">Output Tokens</div>
+                        <div class="cost-stat-value" id="costOutputTokens">0</div>
+                    </div>
+                    <div class="cost-stat">
+                        <div class="cost-stat-label">Total Tokens</div>
+                        <div class="cost-stat-value" id="costTotalTokens">0</div>
+                    </div>
+                    <div class="cost-stat">
+                        <div class="cost-stat-label">Input Cost</div>
+                        <div class="cost-stat-value" id="costInputCost">$0.00</div>
+                    </div>
+                    <div class="cost-stat">
+                        <div class="cost-stat-label">Output Cost</div>
+                        <div class="cost-stat-value" id="costOutputCost">$0.00</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Test Spec Panel -->
+            <div class="test-spec-panel">
+                <h3>Test Specification</h3>
+                <div class="test-spec-content" id="testSpec"></div>
+            </div>
+            </div><!-- End Overview Tab -->
+
+            <!-- Test Cases Tab Content -->
+            <div id="tab-testcases" class="tab-content">
+                <div class="test-cases-detail-panel">
+                    <div id="testCasesDetailContainer">
+                        <div class="empty-test-cases">Loading test cases...</div>
+                    </div>
+                </div>
+            </div><!-- End Test Cases Tab -->
+
+            <!-- Logs Tab Content -->
+            <div id="tab-logs" class="tab-content">
+            <!-- Logs Panel -->
+            <div id="logsPanel" class="logs-panel" style="margin-bottom: 0;">
+                <div class="logs-header">
+                    <h3 class="logs-title">Execution Logs</h3>
+                    <div class="logs-controls">
+                        <div class="logs-control-group">
+                            <label for="logsTail">Lines:</label>
+                            <select id="logsTail" onchange="loadLogs()">
+                                <option value="100">Last 100</option>
+                                <option value="200">Last 200</option>
+                                <option value="500">Last 500</option>
+                                <option value="0">All</option>
+                            </select>
+                        </div>
+                        <div class="logs-control-group">
+                            <input type="checkbox" id="logsAutoScroll" checked>
+                            <label for="logsAutoScroll">Auto-scroll</label>
+                        </div>
+                        <button class="btn btn-primary btn-sm" onclick="loadLogs()">Refresh</button>
+                    </div>
+                </div>
+                <div id="logsContent" class="logs-content">
+                    <div class="logs-empty">Loading logs...</div>
+                </div>
+                <div class="logs-status">
+                    <span id="logsLastUpdated">-</span>
+                    <span id="logsAutoRefreshIndicator" class="auto-refresh-indicator">
+                        <span class="dot"></span>
+                        <span>Auto-refresh off</span>
+                    </span>
+                </div>
+            </div>
+            </div><!-- End Logs Tab -->
+        </div>
+    </div>
+
+    <script>
+        const jobId = '{{ job_id }}';
+        let autoRefresh = null;
+        let logsAutoRefresh = null;
+        let currentJobStatus = null;
+        let currentTab = 'overview';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadJobStatus();
+        });
+
+        // Tab switching
+        function switchTab(tabName) {
+            currentTab = tabName;
+
+            // Update tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.tab === tabName) {
+                    btn.classList.add('active');
+                }
+            });
+
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+
+            // Load logs when switching to logs tab
+            if (tabName === 'logs') {
+                loadLogs();
+                // Start auto-refresh if job is running
+                if (currentJobStatus === 'running') {
+                    startLogsAutoRefresh();
+                }
+            } else {
+                // Stop auto-refresh when leaving logs tab
+                stopLogsAutoRefresh();
+            }
+        }
+
+        async function loadJobStatus() {
+            try {
+                const response = await fetch(`/api/jobs/${jobId}`);
+                const result = await response.json();
+
+                if (!result.success) {
+                    showAlert('error', result.error);
+                    document.getElementById('loadingContainer').style.display = 'none';
+                    return;
+                }
+
+                const job = result.job;
+                updateJobUI(job);
+
+                if (job.status === 'queued' || job.status === 'running') {
+                    startAutoRefresh();
+                } else {
+                    stopAutoRefresh();
+                }
+
+            } catch (error) {
+                showAlert('error', 'LOAD FAILED: ' + error.message);
+            }
+
+            document.getElementById('loadingContainer').style.display = 'none';
+            document.getElementById('jobContainer').style.display = 'block';
+        }
+
+        function updateJobUI(job) {
+            currentJobStatus = job.status;
+            document.getElementById('jobId').textContent = job.job_id;
+            document.getElementById('testSpec').textContent = job.test_spec;
+
+            // Update Live badge on Logs tab
+            const logsRunningBadge = document.getElementById('logsRunningBadge');
+            if (job.status === 'running') {
+                logsRunningBadge.style.display = 'inline-block';
+            } else {
+                logsRunningBadge.style.display = 'none';
+            }
+
+            // Update Test Cases count badge
+            const testCasesCountBadge = document.getElementById('testCasesCountBadge');
+            if (job.test_cases && job.test_cases.length > 0) {
+                testCasesCountBadge.textContent = job.test_cases.length;
+                testCasesCountBadge.style.display = 'inline-block';
+                // Render test cases detail
+                renderTestCasesDetail(job.test_cases);
+            } else {
+                testCasesCountBadge.style.display = 'none';
+            }
+
+            // Manage logs auto-refresh based on job status and current tab
+            if (job.status === 'running' && currentTab === 'logs') {
+                startLogsAutoRefresh();
+            } else {
+                stopLogsAutoRefresh();
+            }
+
+            const statusBadge = document.getElementById('jobStatus');
+            const statusIndicator = document.getElementById('statusIndicator');
+            statusBadge.textContent = getStatusText(job.status);
+            statusBadge.className = 'status-badge ' + job.status;
+            statusIndicator.className = 'status-indicator ' + job.status;
+
+            if (job.started_at) {
+                document.getElementById('startedAt').textContent = formatTime(job.started_at);
+                document.getElementById('startedItem').style.display = 'block';
+            }
+
+            if (job.completed_at) {
+                document.getElementById('completedAt').textContent = formatTime(job.completed_at);
+                document.getElementById('completedItem').style.display = 'block';
+            }
+
+            if (job.error_message) {
+                document.getElementById('errorMessage').textContent = job.error_message;
+                document.getElementById('errorContainer').style.display = 'block';
+            } else {
+                document.getElementById('errorContainer').style.display = 'none';
+            }
+
+            updateActionButtons(job);
+            updateProgressPanel(job);
+            updateCostPanel(job);
+        }
+
+        function updateCostPanel(job) {
+            if (!job.cost || (!job.cost.input_tokens && !job.cost.output_tokens)) {
+                document.getElementById('costPanel').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('costPanel').style.display = 'block';
+
+            const cost = job.cost;
+            const inputTokens = cost.input_tokens || 0;
+            const outputTokens = cost.output_tokens || 0;
+            const totalTokens = inputTokens + outputTokens;
+            const inputCost = cost.input_cost || 0;
+            const outputCost = cost.output_cost || 0;
+            const totalCost = cost.total_cost || (inputCost + outputCost);
+
+            document.getElementById('costInputTokens').textContent = formatNumber(inputTokens);
+            document.getElementById('costOutputTokens').textContent = formatNumber(outputTokens);
+            document.getElementById('costTotalTokens').textContent = formatNumber(totalTokens);
+            document.getElementById('costInputCost').textContent = formatCost(inputCost);
+            document.getElementById('costOutputCost').textContent = formatCost(outputCost);
+            document.getElementById('costTotal').textContent = formatCost(totalCost);
+        }
+
+        function formatNumber(num) {
+            return num.toLocaleString('en-US');
+        }
+
+        function formatCost(cost) {
+            return '$' + cost.toFixed(4);
+        }
+
+        function updateProgressPanel(job) {
+            if (!job.test_cases || job.test_cases.length === 0) {
+                document.getElementById('progressPanel').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('progressPanel').style.display = 'block';
+
+            const testCases = job.test_cases;
+            const stats = {
+                total: testCases.length,
+                pass: 0,
+                fail: 0,
+                blocked: 0,
+                running: 0,
+                notRun: 0
+            };
+
+            let currentCase = null;
+
+            testCases.forEach(tc => {
+                const status = (tc.status || 'Not Run').toLowerCase().replace(/\s+/g, '-');
+                if (status === 'pass') stats.pass++;
+                else if (status === 'fail') stats.fail++;
+                else if (status === 'blocked') stats.blocked++;
+                else if (status === 'running') {
+                    stats.running++;
+                    currentCase = tc;
+                } else stats.notRun++;
+            });
+
+            const completed = stats.pass + stats.fail + stats.blocked;
+            document.getElementById('progressSummary').textContent =
+                `${completed} / ${stats.total} Cases`;
+
+            document.getElementById('statPass').textContent = stats.pass;
+            document.getElementById('statFail').textContent = stats.fail;
+            document.getElementById('statBlocked').textContent = stats.blocked;
+            document.getElementById('statRunning').textContent = stats.running;
+            document.getElementById('statNotRun').textContent = stats.notRun;
+
+            renderTestCasesTable(testCases, currentCase);
+        }
+
+        function renderTestCasesTable(testCases, currentCase) {
+            const container = document.getElementById('testCasesContainer');
+
+            if (testCases.length === 0) {
+                container.innerHTML = '<div class="empty-progress">No test cases available</div>';
+                return;
+            }
+
+            let tableHtml = `
+                <table class="test-cases-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 80px;">Case ID</th>
+                            <th>Test Case Name</th>
+                            <th style="width: 100px;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            testCases.forEach((tc, index) => {
+                const status = (tc.status || 'Not Run').toLowerCase().replace(/\s+/g, '-');
+                const caseId = tc.case_id || `TC-${String(index + 1).padStart(3, '0')}`;
+                const caseName = tc.title || tc.name || tc.test_name || 'Unnamed Test Case';
+                const isCurrent = currentCase && tc.case_id === currentCase.case_id;
+
+                tableHtml += `
+                    <tr class="${isCurrent ? 'current-case' : ''}">
+                        <td><span class="test-case-id">${caseId}</span></td>
+                        <td><div class="test-case-name">${caseName}</div></td>
+                        <td>
+                            <span class="case-status-badge ${status}">
+                                ${getCaseStatusText(tc.status || 'Not Run')}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tableHtml += `
+                    </tbody>
+                </table>
+            `;
+
+            container.innerHTML = tableHtml;
+        }
+
+        function getCaseStatusText(status) {
+            const statusMap = {
+                'Not Run': 'Not Run',
+                'Running': 'Running',
+                'Pass': 'Pass',
+                'Fail': 'Fail',
+                'Blocked': 'Blocked'
+            };
+            return statusMap[status] || status;
+        }
+
+        function updateActionButtons(job) {
+            const stopBtn = document.getElementById('stopBtn');
+            const deleteBtn = document.getElementById('deleteBtn');
+            const downloadReportBtn = document.getElementById('downloadReportBtn');
+
+            if (job.status === 'queued' || job.status === 'running') {
+                stopBtn.style.display = 'inline-block';
+                deleteBtn.style.display = 'none';
+            } else {
+                stopBtn.style.display = 'none';
+                deleteBtn.style.display = 'inline-block';
+            }
+
+            if (['completed', 'failed', 'stopped'].includes(job.status)) {
+                downloadReportBtn.href = `/api/jobs/${job.job_id}/download`;
+                downloadReportBtn.style.display = 'inline-block';
+            } else {
+                downloadReportBtn.style.display = 'none';
+            }
+        }
+
+        async function stopJob() {
+            if (!confirm('Stop this job?')) return;
+
+            try {
+                const response = await fetch(`/api/jobs/${jobId}/stop`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert('success', result.message);
+                    setTimeout(() => loadJobStatus(), 1000);
+                } else {
+                    showAlert('error', result.error);
+                }
+            } catch (error) {
+                showAlert('error', 'STOP FAILED: ' + error.message);
+            }
+        }
+
+        async function deleteJob() {
+            if (!confirm('Are you sure you want to delete this job? This action cannot be undone.')) return;
+
+            try {
+                const response = await fetch(`/api/jobs/${jobId}`, {
+                    method: 'DELETE'
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlert('success', 'Job deleted successfully. Redirecting to dashboard...');
+                    setTimeout(() => {
+                        window.location.href = '/jobs';
+                    }, 1500);
+                } else {
+                    showAlert('error', result.error);
+                }
+            } catch (error) {
+                showAlert('error', 'DELETE FAILED: ' + error.message);
+            }
+        }
+
+        function startAutoRefresh() {
+            if (!autoRefresh) {
+                autoRefresh = setInterval(loadJobStatus, 5000);
+            }
+        }
+
+        function stopAutoRefresh() {
+            if (autoRefresh) {
+                clearInterval(autoRefresh);
+                autoRefresh = null;
+            }
+        }
+
+        // Logs functions
+        async function loadLogs() {
+            const tailSelect = document.getElementById('logsTail');
+            const tail = tailSelect ? tailSelect.value : '100';
+            const logsContent = document.getElementById('logsContent');
+            const logsLastUpdated = document.getElementById('logsLastUpdated');
+
+            try {
+                const response = await fetch(`/api/jobs/${jobId}/logs?tail=${tail}`);
+                const result = await response.json();
+
+                if (!result.success) {
+                    logsContent.innerHTML = `<div class="logs-empty">${result.error || 'Failed to load logs'}</div>`;
+                    return;
+                }
+
+                if (!result.has_log) {
+                    logsContent.innerHTML = `<div class="logs-empty">${result.message || 'No logs available yet'}</div>`;
+                    logsLastUpdated.textContent = 'No logs available';
+                    return;
+                }
+
+                // Escape HTML and display logs
+                const escapedContent = escapeHtml(result.content || '');
+                logsContent.innerHTML = escapedContent || '<div class="logs-empty">Log file is empty</div>';
+
+                // Update timestamp
+                const now = new Date();
+                logsLastUpdated.textContent = `Last updated: ${now.toLocaleTimeString()}`;
+
+                // Auto-scroll to bottom if enabled
+                const autoScroll = document.getElementById('logsAutoScroll');
+                if (autoScroll && autoScroll.checked) {
+                    logsContent.scrollTop = logsContent.scrollHeight;
+                }
+
+            } catch (error) {
+                logsContent.innerHTML = `<div class="logs-empty">Error loading logs: ${error.message}</div>`;
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function startLogsAutoRefresh() {
+            if (!logsAutoRefresh) {
+                logsAutoRefresh = setInterval(loadLogs, 3000);
+                updateLogsAutoRefreshIndicator(true);
+            }
+        }
+
+        function stopLogsAutoRefresh() {
+            if (logsAutoRefresh) {
+                clearInterval(logsAutoRefresh);
+                logsAutoRefresh = null;
+            }
+            updateLogsAutoRefreshIndicator(false);
+        }
+
+        function updateLogsAutoRefreshIndicator(active) {
+            const indicator = document.getElementById('logsAutoRefreshIndicator');
+            if (indicator) {
+                if (active) {
+                    indicator.className = 'auto-refresh-indicator active';
+                    indicator.querySelector('span:last-child').textContent = 'Auto-refresh on (3s)';
+                } else {
+                    indicator.className = 'auto-refresh-indicator';
+                    indicator.querySelector('span:last-child').textContent = 'Auto-refresh off';
+                }
+            }
+        }
+
+        // Test Cases Detail Functions
+        // Track expanded test cases to preserve state across refreshes
+        const expandedTestCases = new Set();
+
+        function renderTestCasesDetail(testCases) {
+            const container = document.getElementById('testCasesDetailContainer');
+
+            if (!testCases || testCases.length === 0) {
+                container.innerHTML = '<div class="empty-test-cases">No test cases available</div>';
+                return;
+            }
+
+            // Save currently expanded cards before re-rendering
+            container.querySelectorAll('.test-case-card.expanded').forEach(card => {
+                const index = card.id.replace('tc-card-', '');
+                expandedTestCases.add(index);
+            });
+
+            let html = '';
+            testCases.forEach((tc, index) => {
+                const caseId = tc.case_id || `TC-${String(index + 1).padStart(3, '0')}`;
+                const status = (tc.status || 'Not Run').toLowerCase();
+                const priority = (tc.priority || 'P3').toLowerCase();
+                // Check if this card was expanded before refresh
+                const isExpanded = expandedTestCases.has(String(index));
+
+                html += `
+                    <div class="test-case-card${isExpanded ? ' expanded' : ''}" id="tc-card-${index}">
+                        <div class="test-case-header" onclick="toggleTestCase(${index})">
+                            <div class="test-case-header-left">
+                                <span class="test-case-id">${escapeHtml(caseId)}</span>
+                                <span class="test-case-title">${escapeHtml(tc.title || 'Untitled')}</span>
+                            </div>
+                            <div class="test-case-header-right">
+                                <span class="test-case-priority ${priority}">${escapeHtml(tc.priority || 'P3')}</span>
+                                <span class="case-status-badge ${status.replace(/\s+/g, '-')}">${getCaseStatusText(tc.status || 'Not Run')}</span>
+                                <span class="test-case-expand">▼</span>
+                            </div>
+                        </div>
+                        <div class="test-case-body">
+                            ${renderTestCaseBody(tc)}
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function renderTestCaseBody(tc) {
+            let html = '';
+
+            // Meta information
+            html += `
+                <div class="test-case-meta">
+                    <div class="test-case-meta-item">
+                        <span class="test-case-meta-label">Module</span>
+                        <span class="test-case-meta-value">${escapeHtml(tc.module || '-')}</span>
+                    </div>
+                    <div class="test-case-meta-item">
+                        <span class="test-case-meta-label">Requirement ID</span>
+                        <span class="test-case-meta-value">${escapeHtml(tc.requirement_id || '-')}</span>
+                    </div>
+                    <div class="test-case-meta-item">
+                        <span class="test-case-meta-label">Case Type</span>
+                        <span class="test-case-meta-value">${escapeHtml(tc.case_type || '-')}</span>
+                    </div>
+                    <div class="test-case-meta-item">
+                        <span class="test-case-meta-label">Status</span>
+                        <span class="test-case-meta-value">${escapeHtml(tc.status || 'Not Run')}</span>
+                    </div>
+                </div>
+            `;
+
+            // Pre-conditions
+            if (tc.pre_conditions && tc.pre_conditions.length > 0) {
+                html += `
+                    <div class="test-case-section">
+                        <div class="test-case-section-title">Pre-conditions</div>
+                        <ul class="test-case-list">
+                            ${tc.pre_conditions.map(p => `<li>${escapeHtml(p)}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+
+            // Test Steps
+            if (tc.test_steps && tc.test_steps.length > 0) {
+                html += `
+                    <div class="test-case-section">
+                        <div class="test-case-section-title">Test Steps</div>
+                        <ol class="test-case-list">
+                            ${tc.test_steps.map(s => `<li>${escapeHtml(s)}</li>`).join('')}
+                        </ol>
+                    </div>
+                `;
+            }
+
+            // Expected Result
+            if (tc.expected_result) {
+                html += `
+                    <div class="test-case-section">
+                        <div class="test-case-section-title">Expected Result</div>
+                        <div class="test-case-section-content">${escapeHtml(tc.expected_result)}</div>
+                    </div>
+                `;
+            }
+
+            // Actual Result
+            if (tc.actual_result) {
+                const status = (tc.status || 'not-run').toLowerCase().replace(/\s+/g, '-');
+                html += `
+                    <div class="test-case-section">
+                        <div class="test-case-section-title">Actual Result</div>
+                        <div class="test-case-result ${status}">${escapeHtml(tc.actual_result)}</div>
+                    </div>
+                `;
+            }
+
+            // Evidence (Screenshots)
+            if (tc.evidence && tc.evidence.screenshots && tc.evidence.screenshots.length > 0) {
+                html += `
+                    <div class="test-case-section">
+                        <div class="test-case-section-title">Evidence (Screenshots)</div>
+                        <div class="test-case-screenshots">
+                            ${tc.evidence.screenshots.map(s => `<span class="test-case-screenshot">${escapeHtml(s)}</span>`).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Defect IDs
+            if (tc.defect_ids && tc.defect_ids.length > 0) {
+                html += `
+                    <div class="test-case-section">
+                        <div class="test-case-section-title">Defect IDs</div>
+                        <div class="test-case-section-content">${tc.defect_ids.map(d => escapeHtml(d)).join(', ')}</div>
+                    </div>
+                `;
+            }
+
+            return html;
+        }
+
+        function toggleTestCase(index) {
+            const card = document.getElementById(`tc-card-${index}`);
+            if (card) {
+                card.classList.toggle('expanded');
+                // Update the expanded state tracking
+                const indexStr = String(index);
+                if (card.classList.contains('expanded')) {
+                    expandedTestCases.add(indexStr);
+                } else {
+                    expandedTestCases.delete(indexStr);
+                }
+            }
+        }
+
+        function getStatusText(status) {
+            const statusMap = {
+                'queued': 'Queued',
+                'running': 'Running',
+                'completed': 'Completed',
+                'failed': 'Failed',
+                'stopped': 'Stopped',
+                'cancelled': 'Cancelled'
+            };
+            return statusMap[status] || status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+        }
+
+        function formatTime(isoString) {
+            if (!isoString) return '-';
+            const date = new Date(isoString);
+            return date.toLocaleString('en-US', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+        }
+
+        function showAlert(type, message) {
+            const alertClass = type === 'success' ? 'alert-success' : 'alert-error';
+            const alertHtml = `
+                <div class="alert ${alertClass}">
+                    ${message}
+                </div>
+            `;
+            document.getElementById('alertContainer').innerHTML = alertHtml;
+
+            setTimeout(() => {
+                const alert = document.querySelector('.alert');
+                if (alert) alert.remove();
+            }, 3000);
+        }
+
+        window.addEventListener('beforeunload', () => {
+            stopAutoRefresh();
+            stopLogsAutoRefresh();
+        });
+    </script>
+</body>
+</html>

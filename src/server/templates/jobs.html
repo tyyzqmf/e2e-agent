@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jobs Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --col-void: #2A2A2A;
+            --col-paper: #F5F5F3;
+            --col-ink: #3A3A3A;
+            --col-accent: #E85D4A;
+            --col-grid: #D8D8D6;
+            --col-shadow: rgba(0, 0, 0, 0.06);
+            --col-success: #52C67A;
+            --col-warning: #F5A623;
+
+            --font-display: 'Archivo Black', sans-serif;
+            --font-mono: 'IBM Plex Mono', monospace;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-mono);
+            background: var(--col-paper);
+            color: var(--col-ink);
+            line-height: 1.5;
+            overflow-x: hidden;
+        }
+
+        /* Grid Background */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(var(--col-grid) 1px, transparent 1px),
+                linear-gradient(90deg, var(--col-grid) 1px, transparent 1px);
+            background-size: 40px 40px;
+            opacity: 0.4;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 30px;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 35px;
+            animation: slideDown 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header-title {
+            font-family: var(--font-display);
+            font-size: clamp(2rem, 5vw, 3rem);
+            text-transform: capitalize;
+            letter-spacing: -0.02em;
+            line-height: 1;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: 1px solid;
+            font-family: var(--font-mono);
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: capitalize;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: transparent;
+            border-color: var(--col-ink);
+            color: var(--col-ink);
+        }
+
+        .btn-primary:hover {
+            background: var(--col-void);
+            border-color: var(--col-void);
+            color: var(--col-paper);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px var(--col-shadow);
+        }
+
+        .btn-secondary {
+            background: var(--col-accent);
+            border-color: var(--col-accent);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #F07060;
+            border-color: #F07060;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(232, 93, 74, 0.3);
+        }
+
+        .btn-danger {
+            background: transparent;
+            border-color: var(--col-accent);
+            color: var(--col-accent);
+        }
+
+        .btn-danger:hover {
+            background: var(--col-accent);
+            color: white;
+            transform: translateY(-1px);
+        }
+
+        .btn-danger:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Loading */
+        .loading-container {
+            text-align: center;
+            padding: 120px 0;
+        }
+
+        .loading-spinner {
+            width: 80px;
+            height: 80px;
+            border: 6px solid var(--col-grid);
+            border-top-color: var(--col-accent);
+            border-radius: 50%;
+            animation: spin 1s cubic-bezier(0.68, -0.55, 0.27, 1.55) infinite;
+            margin: 0 auto 30px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 11px;
+            letter-spacing: 0.2em;
+            text-transform: capitalize;
+            font-weight: 600;
+        }
+
+        /* Stats Panel */
+        .stats-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+            animation: fadeIn 1s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .stat-card {
+            padding: 25px 30px;
+            background: var(--col-void);
+            color: var(--col-paper);
+            position: relative;
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .stat-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+        }
+
+        .stat-card.total::before { background: var(--col-accent); }
+        .stat-card.running::before { background: var(--col-accent); }
+        .stat-card.completed::before { background: var(--col-success); }
+        .stat-card.failed::before { background: var(--col-accent); }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+        }
+
+        .stat-label {
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: 0.15em;
+            text-transform: capitalize;
+            opacity: 0.6;
+            margin-bottom: 12px;
+        }
+
+        .stat-value {
+            font-family: var(--font-display);
+            font-size: 2.5rem;
+            line-height: 1;
+        }
+
+        /* Jobs Panel */
+        .jobs-panel {
+            background: var(--col-void);
+            color: var(--col-paper);
+            padding: 30px 35px;
+            position: relative;
+            animation: fadeIn 1s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+        }
+
+        .jobs-panel::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--col-accent);
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .panel-title {
+            font-family: var(--font-display);
+            font-size: 1.3rem;
+            text-transform: capitalize;
+            letter-spacing: -0.01em;
+        }
+
+        /* Jobs Table */
+        .jobs-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .jobs-table thead {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .jobs-table th {
+            padding: 15px 12px;
+            text-align: left;
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: 0.15em;
+            text-transform: capitalize;
+            color: var(--col-accent);
+        }
+
+        .jobs-table tbody tr {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .jobs-table tbody tr:hover {
+            background: rgba(232, 93, 74, 0.08);
+        }
+
+        .jobs-table td {
+            padding: 18px 12px;
+            font-size: 12px;
+        }
+
+        .job-id {
+            font-weight: 600;
+            font-family: var(--font-mono);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: capitalize;
+            border: 1px solid;
+        }
+
+        .status-badge.queued {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .status-badge.running {
+            background: rgba(255, 46, 0, 0.2);
+            border-color: var(--col-accent);
+            color: var(--col-accent);
+            animation: glow 2s ease-in-out infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 10px rgba(255, 46, 0, 0.3); }
+            50% { box-shadow: 0 0 20px rgba(255, 46, 0, 0.6); }
+        }
+
+        .status-badge.completed {
+            background: rgba(0, 255, 65, 0.2);
+            border-color: var(--col-success);
+            color: var(--col-success);
+        }
+
+        .status-badge.failed {
+            background: rgba(255, 46, 0, 0.2);
+            border-color: var(--col-accent);
+            color: var(--col-accent);
+        }
+
+        .status-badge.stopped,
+        .status-badge.cancelled {
+            background: rgba(255, 184, 0, 0.2);
+            border-color: var(--col-warning);
+            color: var(--col-warning);
+        }
+
+        /* Checkbox */
+        .job-checkbox {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            accent-color: var(--col-accent);
+        }
+
+        .select-all-checkbox {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            accent-color: var(--col-accent);
+        }
+
+        /* Delete button in table */
+        .btn-delete-small {
+            padding: 6px 12px;
+            border: 1px solid var(--col-accent);
+            background: transparent;
+            color: var(--col-accent);
+            font-family: var(--font-mono);
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: capitalize;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-delete-small:hover {
+            background: var(--col-accent);
+            color: white;
+        }
+
+        /* Actions column */
+        .actions-cell {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        /* Batch actions bar */
+        .batch-actions {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+            margin-bottom: 20px;
+        }
+
+        .batch-actions.hidden {
+            display: none;
+        }
+
+        .selected-count {
+            font-size: 11px;
+            letter-spacing: 0.1em;
+            opacity: 0.8;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 80px 40px;
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 25px;
+            opacity: 0.3;
+        }
+
+        .empty-state-text {
+            font-size: 12px;
+            letter-spacing: 0.1em;
+            text-transform: capitalize;
+            margin-bottom: 30px;
+            opacity: 0.6;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .jobs-table-container {
+                overflow-x: auto;
+            }
+
+            .jobs-table {
+                min-width: 700px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 30px 20px;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .header-actions {
+                width: 100%;
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                text-align: center;
+            }
+
+            .jobs-panel {
+                padding: 25px 20px;
+            }
+
+            .stats-panel {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1 class="header-title">Dashboard</h1>
+            <div class="header-actions">
+                <button class="btn btn-primary" onclick="loadJobs()">Refresh</button>
+                <a href="/" class="btn btn-secondary">+ New Job</a>
+            </div>
+        </div>
+
+        <!-- Stats Panel -->
+        <div class="stats-panel" id="statsPanel" style="display: none;">
+            <div class="stat-card total">
+                <div class="stat-label">Total Jobs</div>
+                <div class="stat-value" id="statTotal">0</div>
+            </div>
+            <div class="stat-card running">
+                <div class="stat-label">Running</div>
+                <div class="stat-value" id="statRunning">0</div>
+            </div>
+            <div class="stat-card completed">
+                <div class="stat-label">Completed</div>
+                <div class="stat-value" id="statCompleted">0</div>
+            </div>
+            <div class="stat-card failed">
+                <div class="stat-label">Failed</div>
+                <div class="stat-value" id="statFailed">0</div>
+            </div>
+        </div>
+
+        <!-- Loading -->
+        <div id="loadingContainer" class="loading-container">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Loading Dashboard...</div>
+        </div>
+
+        <!-- Jobs Panel -->
+        <div id="jobsPanel" class="jobs-panel" style="display: none;">
+            <div class="panel-header">
+                <div class="panel-title">All Jobs</div>
+            </div>
+
+            <!-- Batch Actions Bar -->
+            <div id="batchActions" class="batch-actions hidden">
+                <span class="selected-count"><span id="selectedCount">0</span> selected</span>
+                <button class="btn btn-danger" onclick="deleteSelectedJobs()">Delete Selected</button>
+                <button class="btn btn-primary" onclick="clearSelection()">Clear Selection</button>
+            </div>
+
+            <div id="jobsTableContainer" class="jobs-table-container"></div>
+        </div>
+    </div>
+
+    <script>
+        let autoRefresh = null;
+        let selectedJobs = new Set();
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadJobs();
+            startAutoRefresh();
+        });
+
+        async function loadJobs() {
+            try {
+                const response = await fetch('/api/jobs');
+                const result = await response.json();
+
+                if (!result.success) {
+                    showError('Failed to load jobs: ' + result.error);
+                    return;
+                }
+
+                const jobs = result.jobs;
+                updateStats(jobs);
+                updateJobsTable(jobs);
+
+                document.getElementById('loadingContainer').style.display = 'none';
+                document.getElementById('statsPanel').style.display = 'grid';
+                document.getElementById('jobsPanel').style.display = 'block';
+
+            } catch (error) {
+                showError('Network Error: ' + error.message);
+                document.getElementById('loadingContainer').style.display = 'none';
+            }
+        }
+
+        function updateStats(jobs) {
+            const stats = {
+                total: jobs.length,
+                running: 0,
+                completed: 0,
+                failed: 0
+            };
+
+            jobs.forEach(job => {
+                if (job.status === 'running' || job.status === 'queued') {
+                    stats.running++;
+                } else if (job.status === 'completed') {
+                    stats.completed++;
+                } else if (job.status === 'failed') {
+                    stats.failed++;
+                }
+            });
+
+            document.getElementById('statTotal').textContent = stats.total;
+            document.getElementById('statRunning').textContent = stats.running;
+            document.getElementById('statCompleted').textContent = stats.completed;
+            document.getElementById('statFailed').textContent = stats.failed;
+        }
+
+        function updateJobsTable(jobs) {
+            const container = document.getElementById('jobsTableContainer');
+
+            if (jobs.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">[]</div>
+                        <div class="empty-state-text">No Jobs Found</div>
+                        <a href="/" class="btn btn-primary">Create First Job</a>
+                    </div>
+                `;
+                updateBatchActionsBar();
+                return;
+            }
+
+            let tableHtml = `
+                <table class="jobs-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;">
+                                <input type="checkbox" class="select-all-checkbox" onchange="toggleSelectAll(this)" title="Select All">
+                            </th>
+                            <th>Job ID</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Started</th>
+                            <th>Completed</th>
+                            <th style="width: 80px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            jobs.forEach(job => {
+                const jobIdShort = job.job_id.substring(0, 12) + '...';
+                const isChecked = selectedJobs.has(job.job_id) ? 'checked' : '';
+                const canDelete = job.status !== 'running';
+                tableHtml += `
+                    <tr>
+                        <td onclick="event.stopPropagation()">
+                            <input type="checkbox" class="job-checkbox" data-job-id="${job.job_id}" ${isChecked} onchange="toggleJobSelection('${job.job_id}', this.checked)">
+                        </td>
+                        <td onclick="window.location.href='/status/${job.job_id}'" style="cursor: pointer;">
+                            <span class="job-id" title="${job.job_id}">${jobIdShort}</span>
+                        </td>
+                        <td onclick="window.location.href='/status/${job.job_id}'" style="cursor: pointer;">
+                            <span class="status-badge ${job.status}">
+                                ${getStatusText(job.status)}
+                            </span>
+                        </td>
+                        <td onclick="window.location.href='/status/${job.job_id}'" style="cursor: pointer;">${formatTime(job.created_at)}</td>
+                        <td onclick="window.location.href='/status/${job.job_id}'" style="cursor: pointer;">${formatTime(job.started_at)}</td>
+                        <td onclick="window.location.href='/status/${job.job_id}'" style="cursor: pointer;">${formatTime(job.completed_at)}</td>
+                        <td onclick="event.stopPropagation()">
+                            <button class="btn-delete-small" onclick="deleteJob('${job.job_id}')" ${canDelete ? '' : 'disabled'} title="${canDelete ? 'Delete job' : 'Cannot delete running job'}">
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tableHtml += `
+                    </tbody>
+                </table>
+            `;
+
+            container.innerHTML = tableHtml;
+            updateBatchActionsBar();
+        }
+
+        function getStatusText(status) {
+            const statusMap = {
+                'queued': 'Queued',
+                'running': 'Running',
+                'completed': 'Completed',
+                'failed': 'Failed',
+                'stopped': 'Stopped',
+                'cancelled': 'Cancelled'
+            };
+            return statusMap[status] || status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+        }
+
+        function formatTime(isoString) {
+            if (!isoString) return '-';
+            const date = new Date(isoString);
+            return date.toLocaleString('en-US', {
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            });
+        }
+
+        function showError(message) {
+            const container = document.getElementById('jobsTableContainer');
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">x</div>
+                    <div class="empty-state-text">${message}</div>
+                </div>
+            `;
+        }
+
+        function startAutoRefresh() {
+            if (!autoRefresh) {
+                autoRefresh = setInterval(loadJobs, 10000);
+            }
+        }
+
+        function stopAutoRefresh() {
+            if (autoRefresh) {
+                clearInterval(autoRefresh);
+                autoRefresh = null;
+            }
+        }
+
+        // Selection functions
+        function toggleJobSelection(jobId, isSelected) {
+            if (isSelected) {
+                selectedJobs.add(jobId);
+            } else {
+                selectedJobs.delete(jobId);
+            }
+            updateBatchActionsBar();
+        }
+
+        function toggleSelectAll(checkbox) {
+            const allCheckboxes = document.querySelectorAll('.job-checkbox');
+            allCheckboxes.forEach(cb => {
+                cb.checked = checkbox.checked;
+                if (checkbox.checked) {
+                    selectedJobs.add(cb.dataset.jobId);
+                } else {
+                    selectedJobs.delete(cb.dataset.jobId);
+                }
+            });
+            updateBatchActionsBar();
+        }
+
+        function clearSelection() {
+            selectedJobs.clear();
+            const allCheckboxes = document.querySelectorAll('.job-checkbox');
+            allCheckboxes.forEach(cb => cb.checked = false);
+            const selectAllCheckbox = document.querySelector('.select-all-checkbox');
+            if (selectAllCheckbox) selectAllCheckbox.checked = false;
+            updateBatchActionsBar();
+        }
+
+        function updateBatchActionsBar() {
+            const batchActions = document.getElementById('batchActions');
+            const selectedCount = document.getElementById('selectedCount');
+
+            if (selectedJobs.size > 0) {
+                batchActions.classList.remove('hidden');
+                selectedCount.textContent = selectedJobs.size;
+            } else {
+                batchActions.classList.add('hidden');
+            }
+        }
+
+        // Delete functions
+        async function deleteJob(jobId) {
+            if (!confirm('Are you sure you want to delete this job?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/jobs/${jobId}`, {
+                    method: 'DELETE'
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification('Job deleted successfully', 'success');
+                    selectedJobs.delete(jobId);
+                    loadJobs();
+                } else {
+                    showNotification('Delete failed: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Delete failed: ' + error.message, 'error');
+            }
+        }
+
+        async function deleteSelectedJobs() {
+            if (selectedJobs.size === 0) return;
+
+            const count = selectedJobs.size;
+            if (!confirm(`Are you sure you want to delete ${count} job(s)?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/jobs', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ job_ids: Array.from(selectedJobs) })
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification(`Successfully deleted ${result.deleted.length} job(s)`, 'success');
+                } else {
+                    const failedCount = result.failed?.length || 0;
+                    const deletedCount = result.deleted?.length || 0;
+                    showNotification(`Deleted ${deletedCount}, failed ${failedCount} job(s)`, 'warning');
+                }
+
+                // Clear selection for deleted jobs
+                if (result.deleted) {
+                    result.deleted.forEach(id => selectedJobs.delete(id));
+                }
+                loadJobs();
+            } catch (error) {
+                showNotification('Batch delete failed: ' + error.message, 'error');
+            }
+        }
+
+        function showNotification(message, type = 'info') {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 15px 25px;
+                background: ${type === 'success' ? 'var(--col-success)' : type === 'error' ? 'var(--col-accent)' : 'var(--col-warning)'};
+                color: white;
+                font-family: var(--font-mono);
+                font-size: 12px;
+                font-weight: 600;
+                z-index: 1000;
+                animation: slideIn 0.3s ease;
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            // Remove after 3 seconds
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        window.addEventListener('beforeunload', () => {
+            stopAutoRefresh();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,84 @@
+# Agent-generated output directories
+generations/
+data/
+specs/
+
+# Log files
+logs/
+
+# ===========================
+# Python
+# ===========================
+# Byte-compiled / optimized
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# ===========================
+# Bun / Node.js
+# ===========================
+node_modules/
+bun.lockb
+*.tsbuildinfo
+
+# ===========================
+# Environment Variables
+# ===========================
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Test configuration (contains sensitive data)
+test_spec.txt
+
+# ===========================
+# IDE / Editor
+# ===========================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ===========================
+# OS generated files
+# ===========================
+.DS_Store
+.DS_Store?
+Thumbs.db
+
+# ===========================
+# Build output
+# ===========================
+dist/
+build/
+out/
+
+# ===========================
+# Python testing & coverage
+# ===========================
+.pytest_cache/
+.coverage
+htmlcov/
+coverage/
+*.egg-info/
+
+# ===========================
+# Security scanning
+# ===========================
+.ash/
+
+# ===========================
+# Process files
+# ===========================
+*.pid

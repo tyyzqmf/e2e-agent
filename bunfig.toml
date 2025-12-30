@@ -1,0 +1,18 @@
+# Bun configuration file
+# https://bun.sh/docs/runtime/bunfig
+
+[run]
+# Silence startup warnings
+silent = false
+
+[install]
+# Use isolated installs for better reproducibility
+isolated = true
+
+[test]
+# Test configuration
+coverage = true
+coverageDir = "coverage"
+
+# Test file patterns
+root = "."

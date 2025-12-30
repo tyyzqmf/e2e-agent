@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Report | {{PROJECT_NAME}}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --col-void: #2A2A2A;
+            --col-paper: #F5F5F3;
+            --col-ink: #3A3A3A;
+            --col-accent: #E85D4A;
+            --col-grid: #D8D8D6;
+            --col-shadow: rgba(0, 0, 0, 0.06);
+            --col-success: #00C853;
+            --col-fail: #FF3D00;
+            --col-blocked: #FF9100;
+            --col-notrun: #9E9E9E;
+
+            --font-display: 'Archivo Black', sans-serif;
+            --font-mono: 'IBM Plex Mono', monospace;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-mono);
+            background: var(--col-paper);
+            color: var(--col-ink);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Grid Background */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(var(--col-grid) 1px, transparent 1px),
+                linear-gradient(90deg, var(--col-grid) 1px, transparent 1px);
+            background-size: 40px 40px;
+            opacity: 0.4;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 40px 30px;
+        }
+
+        /* Masthead */
+        .masthead {
+            margin-bottom: 50px;
+            animation: slideDown 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-60px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .masthead-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        .masthead-content {
+            flex: 1;
+            min-width: 300px;
+        }
+
+        .masthead-title {
+            font-family: var(--font-display);
+            font-size: clamp(2rem, 6vw, 3.5rem);
+            line-height: 0.95;
+            letter-spacing: -0.02em;
+            margin-bottom: 12px;
+        }
+
+        .masthead-title span {
+            display: block;
+        }
+
+        .masthead-title .accent {
+            color: var(--col-accent);
+            margin-left: 40px;
+        }
+
+        .masthead-subtitle {
+            font-size: 11px;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            font-weight: 600;
+            opacity: 0.7;
+            margin-left: 4px;
+        }
+
+        .masthead-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 20px 25px;
+            background: var(--col-void);
+            color: var(--col-paper);
+            font-size: 11px;
+            min-width: 280px;
+            position: relative;
+        }
+
+        .masthead-meta::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--col-accent);
+        }
+
+        .meta-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        .meta-label {
+            opacity: 0.6;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-size: 9px;
+        }
+
+        .meta-value {
+            font-weight: 600;
+        }
+
+        /* Summary Stats */
+        .summary-section {
+            margin-bottom: 50px;
+            animation: fadeIn 1s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-left: 4px solid var(--col-grid);
+            box-shadow: 0 2px 12px var(--col-shadow);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px var(--col-shadow);
+        }
+
+        .stat-card.success { border-color: var(--col-success); }
+        .stat-card.fail { border-color: var(--col-fail); }
+        .stat-card.blocked { border-color: var(--col-blocked); }
+        .stat-card.total { border-color: var(--col-accent); }
+
+        .stat-number {
+            font-family: var(--font-display);
+            font-size: 3rem;
+            line-height: 1;
+            margin-bottom: 8px;
+        }
+
+        .stat-card.success .stat-number { color: var(--col-success); }
+        .stat-card.fail .stat-number { color: var(--col-fail); }
+        .stat-card.blocked .stat-number { color: var(--col-blocked); }
+        .stat-card.total .stat-number { color: var(--col-accent); }
+
+        .stat-label {
+            font-size: 10px;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            font-weight: 600;
+            opacity: 0.7;
+        }
+
+        .stat-percent {
+            font-size: 12px;
+            margin-top: 8px;
+            opacity: 0.6;
+        }
+
+        /* Progress Bar */
+        .progress-section {
+            margin-bottom: 50px;
+            animation: fadeIn 1s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+        }
+
+        .progress-bar-container {
+            background: white;
+            padding: 30px;
+            box-shadow: 0 2px 12px var(--col-shadow);
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .progress-title {
+            font-family: var(--font-display);
+            font-size: 1.2rem;
+            text-transform: uppercase;
+        }
+
+        .progress-percentage {
+            font-family: var(--font-display);
+            font-size: 2rem;
+            color: var(--col-success);
+        }
+
+        .progress-bar {
+            height: 12px;
+            background: var(--col-grid);
+            display: flex;
+            overflow: hidden;
+        }
+
+        .progress-segment {
+            height: 100%;
+            transition: width 1s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .progress-segment.pass { background: var(--col-success); }
+        .progress-segment.fail { background: var(--col-fail); }
+        .progress-segment.blocked { background: var(--col-blocked); }
+        .progress-segment.notrun { background: var(--col-notrun); }
+
+        .progress-legend {
+            display: flex;
+            gap: 25px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+        }
+
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+        }
+
+        .legend-dot.pass { background: var(--col-success); }
+        .legend-dot.fail { background: var(--col-fail); }
+        .legend-dot.blocked { background: var(--col-blocked); }
+        .legend-dot.notrun { background: var(--col-notrun); }
+
+        /* Section Headers */
+        .section-header {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            text-transform: uppercase;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid var(--col-void);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .section-header::before {
+            content: "";
+            width: 8px;
+            height: 8px;
+            background: var(--col-accent);
+        }
+
+        /* Test Cases Table */
+        .test-cases-section {
+            margin-bottom: 50px;
+            animation: fadeIn 1s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both;
+        }
+
+        .test-table-container {
+            background: white;
+            box-shadow: 0 2px 12px var(--col-shadow);
+            overflow: hidden;
+        }
+
+        .test-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        .test-table th {
+            background: var(--col-void);
+            color: var(--col-paper);
+            text-align: left;
+            padding: 15px 20px;
+            font-size: 10px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .test-table td {
+            padding: 18px 20px;
+            border-bottom: 1px solid var(--col-grid);
+            vertical-align: top;
+        }
+
+        .test-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .test-table tr:hover td {
+            background: rgba(232, 93, 74, 0.03);
+        }
+
+        .test-id {
+            font-weight: 700;
+            color: var(--col-accent);
+            white-space: nowrap;
+        }
+
+        .test-title {
+            font-weight: 500;
+        }
+
+        .test-priority {
+            display: inline-block;
+            padding: 4px 10px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+        }
+
+        .test-priority.p1 {
+            background: var(--col-accent);
+            color: white;
+        }
+
+        .test-priority.p2 {
+            background: var(--col-void);
+            color: white;
+        }
+
+        .test-priority.p3 {
+            background: var(--col-grid);
+            color: var(--col-ink);
+        }
+
+        .test-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .test-status.pass {
+            background: rgba(0, 200, 83, 0.15);
+            color: var(--col-success);
+        }
+
+        .test-status.fail {
+            background: rgba(255, 61, 0, 0.15);
+            color: var(--col-fail);
+        }
+
+        .test-status.blocked {
+            background: rgba(255, 145, 0, 0.15);
+            color: var(--col-blocked);
+        }
+
+        .test-status.notrun {
+            background: rgba(158, 158, 158, 0.15);
+            color: var(--col-notrun);
+        }
+
+        .status-icon {
+            font-size: 14px;
+        }
+
+        /* Test Case Detail Cards */
+        .test-details-section {
+            margin-bottom: 50px;
+            animation: fadeIn 1s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both;
+        }
+
+        .test-card {
+            background: white;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 12px var(--col-shadow);
+            overflow: hidden;
+        }
+
+        .test-card-header {
+            background: var(--col-void);
+            color: var(--col-paper);
+            padding: 20px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .test-card-id {
+            font-family: var(--font-display);
+            font-size: 1.2rem;
+        }
+
+        .test-card-title {
+            flex: 1;
+            min-width: 200px;
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        .test-card-body {
+            padding: 25px;
+        }
+
+        .test-card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+        }
+
+        .test-field {
+            margin-bottom: 20px;
+        }
+
+        .test-field:last-child {
+            margin-bottom: 0;
+        }
+
+        .test-field-label {
+            font-size: 10px;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            font-weight: 600;
+            color: var(--col-accent);
+            margin-bottom: 8px;
+        }
+
+        .test-field-value {
+            font-size: 13px;
+            line-height: 1.7;
+        }
+
+        .test-steps {
+            list-style: none;
+            counter-reset: step;
+        }
+
+        .test-steps li {
+            position: relative;
+            padding-left: 35px;
+            margin-bottom: 10px;
+        }
+
+        .test-steps li::before {
+            counter-increment: step;
+            content: counter(step);
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 22px;
+            height: 22px;
+            background: var(--col-void);
+            color: var(--col-paper);
+            font-size: 10px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .actual-result {
+            background: rgba(0, 200, 83, 0.08);
+            padding: 15px;
+            border-left: 3px solid var(--col-success);
+        }
+
+        .actual-result.fail {
+            background: rgba(255, 61, 0, 0.08);
+            border-color: var(--col-fail);
+        }
+
+        .actual-result.blocked {
+            background: rgba(255, 145, 0, 0.08);
+            border-color: var(--col-blocked);
+        }
+
+        /* Evidence Section */
+        .evidence-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .evidence-item {
+            background: var(--col-paper);
+            padding: 12px;
+            border: 1px solid var(--col-grid);
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .evidence-item a {
+            color: var(--col-accent);
+            text-decoration: none;
+        }
+
+        .evidence-item a:hover {
+            text-decoration: underline;
+        }
+
+        .evidence-icon {
+            font-size: 16px;
+        }
+
+        /* Cost Section */
+        .cost-section {
+            margin-bottom: 50px;
+            animation: fadeIn 1s cubic-bezier(0.16, 1, 0.3, 1) 0.6s both;
+        }
+
+        .cost-card {
+            background: var(--col-void);
+            color: var(--col-paper);
+            padding: 30px;
+            position: relative;
+        }
+
+        .cost-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--col-accent);
+        }
+
+        .cost-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 30px;
+        }
+
+        .cost-item {
+            text-align: center;
+        }
+
+        .cost-value {
+            font-family: var(--font-display);
+            font-size: 2.5rem;
+            color: var(--col-accent);
+            line-height: 1;
+            margin-bottom: 8px;
+        }
+
+        .cost-label {
+            font-size: 10px;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            opacity: 0.6;
+        }
+
+        /* Links Section */
+        .links-section {
+            margin-bottom: 50px;
+            animation: fadeIn 1s cubic-bezier(0.16, 1, 0.3, 1) 0.65s both;
+        }
+
+        .links-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .link-card {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 20px;
+            background: white;
+            border-left: 4px solid var(--col-void);
+            box-shadow: 0 2px 12px var(--col-shadow);
+            text-decoration: none;
+            color: var(--col-ink);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .link-card:hover {
+            border-color: var(--col-accent);
+            transform: translateX(5px);
+        }
+
+        .link-icon {
+            font-size: 24px;
+        }
+
+        .link-text {
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        /* Footer */
+        .report-footer {
+            text-align: center;
+            padding: 40px 0;
+            font-size: 11px;
+            opacity: 0.6;
+            border-top: 1px solid var(--col-grid);
+            animation: fadeIn 1s cubic-bezier(0.16, 1, 0.3, 1) 0.7s both;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 25px 15px;
+            }
+
+            .masthead-row {
+                flex-direction: column;
+            }
+
+            .masthead-meta {
+                width: 100%;
+            }
+
+            .test-table {
+                font-size: 11px;
+            }
+
+            .test-table th,
+            .test-table td {
+                padding: 12px 15px;
+            }
+
+            .test-card-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .test-card-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Masthead -->
+        <header class="masthead">
+            <div class="masthead-row">
+                <div class="masthead-content">
+                    <h1 class="masthead-title">
+                        <span>Test Report</span>
+                        <span class="accent">Viewer</span>
+                    </h1>
+                    <div class="masthead-subtitle">{{PROJECT_NAME}}</div>
+                </div>
+                <div class="masthead-meta">
+                    <div class="meta-row">
+                        <span class="meta-label">Run ID</span>
+                        <span class="meta-value">{{RUN_ID}}</span>
+                    </div>
+                    <div class="meta-row">
+                        <span class="meta-label">Date</span>
+                        <span class="meta-value">{{REPORT_DATE}}</span>
+                    </div>
+                    <div class="meta-row">
+                        <span class="meta-label">Target</span>
+                        <span class="meta-value">{{TARGET_URL}}</span>
+                    </div>
+                    <div class="meta-row">
+                        <span class="meta-label">Status</span>
+                        <span class="meta-value" style="color: var(--col-{{OVERALL_STATUS_COLOR}});">{{OVERALL_STATUS}}</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Summary Stats -->
+        <section class="summary-section">
+            <div class="stats-grid">
+                <div class="stat-card total">
+                    <div class="stat-number">{{TOTAL_TESTS}}</div>
+                    <div class="stat-label">Total Tests</div>
+                    <div class="stat-percent">{{COVERAGE_PERCENT}}% Coverage</div>
+                </div>
+                <div class="stat-card success">
+                    <div class="stat-number">{{PASSED_TESTS}}</div>
+                    <div class="stat-label">Passed</div>
+                    <div class="stat-percent">{{PASSED_PERCENT}}%</div>
+                </div>
+                <div class="stat-card fail">
+                    <div class="stat-number">{{FAILED_TESTS}}</div>
+                    <div class="stat-label">Failed</div>
+                    <div class="stat-percent">{{FAILED_PERCENT}}%</div>
+                </div>
+                <div class="stat-card blocked">
+                    <div class="stat-number">{{BLOCKED_TESTS}}</div>
+                    <div class="stat-label">Blocked</div>
+                    <div class="stat-percent">{{BLOCKED_PERCENT}}%</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Progress Bar -->
+        <section class="progress-section">
+            <div class="progress-bar-container">
+                <div class="progress-header">
+                    <span class="progress-title">Test Execution Progress</span>
+                    <span class="progress-percentage">{{EXECUTION_PERCENT}}%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-segment pass" style="width: {{PASSED_PERCENT}}%;"></div>
+                    <div class="progress-segment fail" style="width: {{FAILED_PERCENT}}%;"></div>
+                    <div class="progress-segment blocked" style="width: {{BLOCKED_PERCENT}}%;"></div>
+                    <div class="progress-segment notrun" style="width: {{NOTRUN_PERCENT}}%;"></div>
+                </div>
+                <div class="progress-legend">
+                    <div class="legend-item">
+                        <div class="legend-dot pass"></div>
+                        <span>Pass ({{PASSED_TESTS}})</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot fail"></div>
+                        <span>Fail ({{FAILED_TESTS}})</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot blocked"></div>
+                        <span>Blocked ({{BLOCKED_TESTS}})</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot notrun"></div>
+                        <span>Not Run ({{NOTRUN_TESTS}})</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Test Cases Overview -->
+        <section class="test-cases-section">
+            <h2 class="section-header">Test Cases Overview</h2>
+            <div class="test-table-container">
+                <table class="test-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Title</th>
+                            <th>Module</th>
+                            <th>Priority</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{#TEST_CASES_TABLE}}
+                        <tr>
+                            <td class="test-id">{{TC_ID}}</td>
+                            <td class="test-title">{{TC_TITLE}}</td>
+                            <td>{{TC_MODULE}}</td>
+                            <td><span class="test-priority {{TC_PRIORITY_CLASS}}">{{TC_PRIORITY}}</span></td>
+                            <td><span class="test-status {{TC_STATUS_CLASS}}"><span class="status-icon">{{TC_STATUS_ICON}}</span> {{TC_STATUS}}</span></td>
+                        </tr>
+                        {{/TEST_CASES_TABLE}}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Test Case Details -->
+        <section class="test-details-section">
+            <h2 class="section-header">Test Case Details</h2>
+
+            {{#TEST_CASE_DETAILS}}
+            <div class="test-card">
+                <div class="test-card-header">
+                    <span class="test-card-id">{{TC_ID}}</span>
+                    <span class="test-card-title">{{TC_TITLE}}</span>
+                    <span class="test-status {{TC_STATUS_CLASS}}"><span class="status-icon">{{TC_STATUS_ICON}}</span> {{TC_STATUS}}</span>
+                </div>
+                <div class="test-card-body">
+                    <div class="test-card-grid">
+                        <div>
+                            <div class="test-field">
+                                <div class="test-field-label">Test Steps</div>
+                                <ul class="test-steps">
+                                    {{#TC_STEPS}}
+                                    <li>{{STEP}}</li>
+                                    {{/TC_STEPS}}
+                                </ul>
+                            </div>
+                            <div class="test-field">
+                                <div class="test-field-label">Expected Result</div>
+                                <div class="test-field-value">{{TC_EXPECTED_RESULT}}</div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="test-field">
+                                <div class="test-field-label">Actual Result</div>
+                                <div class="actual-result {{TC_RESULT_CLASS}}">{{TC_ACTUAL_RESULT}}</div>
+                            </div>
+                            {{#TC_HAS_EVIDENCE}}
+                            <div class="test-field">
+                                <div class="test-field-label">Evidence</div>
+                                <div class="evidence-grid">
+                                    {{#TC_EVIDENCE}}
+                                    <div class="evidence-item">
+                                        <span class="evidence-icon">{{EVIDENCE_ICON}}</span>
+                                        <a href="{{EVIDENCE_PATH}}">{{EVIDENCE_NAME}}</a>
+                                    </div>
+                                    {{/TC_EVIDENCE}}
+                                </div>
+                            </div>
+                            {{/TC_HAS_EVIDENCE}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {{/TEST_CASE_DETAILS}}
+        </section>
+
+        <!-- Cost Statistics -->
+        <section class="cost-section">
+            <h2 class="section-header">Cost Statistics</h2>
+            <div class="cost-card">
+                <div class="cost-grid">
+                    <div class="cost-item">
+                        <div class="cost-value">{{TOTAL_COST}}</div>
+                        <div class="cost-label">Total Cost</div>
+                    </div>
+                    <div class="cost-item">
+                        <div class="cost-value">{{TOTAL_TOKENS}}</div>
+                        <div class="cost-label">Total Tokens</div>
+                    </div>
+                    <div class="cost-item">
+                        <div class="cost-value">{{DURATION}}</div>
+                        <div class="cost-label">Duration</div>
+                    </div>
+                    <div class="cost-item">
+                        <div class="cost-value">{{SESSIONS}}</div>
+                        <div class="cost-label">Sessions</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Related Links -->
+        <section class="links-section">
+            <h2 class="section-header">Related Documents</h2>
+            <div class="links-grid">
+                {{#RELATED_LINKS}}
+                <a href="{{LINK_URL}}" class="link-card">
+                    <span class="link-icon">{{LINK_ICON}}</span>
+                    <span class="link-text">{{LINK_TEXT}}</span>
+                </a>
+                {{/RELATED_LINKS}}
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="report-footer">
+            <p>Report Generated: {{GENERATED_TIMESTAMP}}</p>
+            <p>E2E Testing Agent | Autonomous Test Execution Framework</p>
+        </footer>
+    </div>
+</body>
+</html>
