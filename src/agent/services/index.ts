@@ -5,40 +5,39 @@
  * Re-exports all service components.
  */
 
-// Prompt loading utilities
-export {
-  PROMPTS_DIR,
-  TEMPLATES_DIR,
-  UTILS_DIR,
-  ROOT_DIR,
-  validateProjectDirectory,
-  validateDestName,
-  loadPrompt,
-  getTestPlannerPrompt,
-  getTestExecutorPrompt,
-  copyToProject,
-  copyTestSpecToProject,
-  copyTemplatesToProject,
-  copyUtilsToProject,
-  setupProjectDirectory,
-} from "./prompts.ts";
-
-// Progress tracking utilities
-export {
-  loadTestCases,
-  countTestCases,
-  countDefects,
-  printTestSessionHeader,
-  printTestProgressSummary,
-  ProgressTracker,
-} from "./progress.ts";
-
 // Pricing calculator
 export { PricingCalculator } from "./pricing.ts";
 
+// Progress tracking utilities
+export {
+	countDefects,
+	countTestCases,
+	loadTestCases,
+	ProgressTracker,
+	printTestProgressSummary,
+	printTestSessionHeader,
+} from "./progress.ts";
+// Prompt loading utilities
+export {
+	copyTemplatesToProject,
+	copyTestSpecToProject,
+	copyToProject,
+	copyUtilsToProject,
+	getTestExecutorPrompt,
+	getTestPlannerPrompt,
+	loadPrompt,
+	PROMPTS_DIR,
+	ROOT_DIR,
+	setupProjectDirectory,
+	TEMPLATES_DIR,
+	UTILS_DIR,
+	validateDestName,
+	validateProjectDirectory,
+} from "./prompts.ts";
+
 // Token usage tracking
 export {
-  TokenUsageTracker,
-  CostReportGenerator,
-  updateHtmlReportCostStatistics,
+	CostReportGenerator,
+	TokenUsageTracker,
+	updateHtmlReportCostStatistics,
 } from "./token-usage.ts";

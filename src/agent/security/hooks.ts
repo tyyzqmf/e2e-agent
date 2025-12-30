@@ -11,7 +11,7 @@
 export const MAX_SNAPSHOT_LENGTH = 50000;
 export const MAX_TOOL_OUTPUT_LENGTH = 100000;
 export const TRUNCATION_NOTICE =
-  "\n\n[Content truncated due to size limits. Use targeted selectors for specific elements.]";
+	"\n\n[Content truncated due to size limits. Use targeted selectors for specific elements.]";
 
 /**
  * Hook decision types
@@ -22,39 +22,39 @@ export type HookDecision = "approve" | "block";
  * Post tool use hook input
  */
 export interface PostToolUseHookInput {
-  toolName?: string;
-  toolResult?: {
-    content?: string | object;
-    isError?: boolean;
-  };
+	toolName?: string;
+	toolResult?: {
+		content?: string | object;
+		isError?: boolean;
+	};
 }
 
 /**
  * Pre compact hook input
  */
 export interface PreCompactHookInput {
-  trigger?: string;
-  sessionId?: string;
+	trigger?: string;
+	sessionId?: string;
 }
 
 /**
  * Hook output format
  */
 export interface HookOutput {
-  decision: HookDecision;
-  outputToUser?: string;
-  customInstructions?: string;
+	decision: HookDecision;
+	outputToUser?: string;
+	customInstructions?: string;
 }
 
 /**
  * Hook matcher configuration
  */
 export interface HookMatcher {
-  matcher?: string;
-  hooks: Array<
-    (input: PostToolUseHookInput | PreCompactHookInput) => Promise<HookOutput>
-  >;
-  timeout?: number;
+	matcher?: string;
+	hooks: Array<
+		(input: PostToolUseHookInput | PreCompactHookInput) => Promise<HookOutput>
+	>;
+	timeout?: number;
 }
 
 /**
@@ -64,37 +64,37 @@ export interface HookMatcher {
  * that get added to the conversation context.
  */
 export async function truncateLargeToolOutput(
-  hookInput: PostToolUseHookInput
+	hookInput: PostToolUseHookInput,
 ): Promise<HookOutput> {
-  const toolName = hookInput.toolName ?? "";
-  const toolResult = hookInput.toolResult ?? {};
+	const toolName = hookInput.toolName ?? "";
+	const toolResult = hookInput.toolResult ?? {};
 
-  // Get the content from the tool result
-  let content = toolResult.content ?? "";
-  if (typeof content === "object") {
-    content = JSON.stringify(content);
-  } else if (typeof content !== "string") {
-    content = String(content);
-  }
+	// Get the content from the tool result
+	let content = toolResult.content ?? "";
+	if (typeof content === "object") {
+		content = JSON.stringify(content);
+	} else if (typeof content !== "string") {
+		content = String(content);
+	}
 
-  // Determine max length based on tool type
-  const maxLength = toolName.includes("take_snapshot")
-    ? MAX_SNAPSHOT_LENGTH
-    : MAX_TOOL_OUTPUT_LENGTH;
+	// Determine max length based on tool type
+	const maxLength = toolName.includes("take_snapshot")
+		? MAX_SNAPSHOT_LENGTH
+		: MAX_TOOL_OUTPUT_LENGTH;
 
-  // Check if truncation is needed
-  if (content.length > maxLength) {
-    console.log(
-      `[Hook] Truncating ${toolName} output from ${content.length} to ${maxLength} chars`
-    );
+	// Check if truncation is needed
+	if (content.length > maxLength) {
+		console.log(
+			`[Hook] Truncating ${toolName} output from ${content.length} to ${maxLength} chars`,
+		);
 
-    return {
-      decision: "approve",
-      outputToUser: `[Context Management] Truncated large output from ${toolName}`,
-    };
-  }
+		return {
+			decision: "approve",
+			outputToUser: `[Context Management] Truncated large output from ${toolName}`,
+		};
+	}
 
-  return { decision: "approve" };
+	return { decision: "approve" };
 }
 
 /**
@@ -104,17 +104,17 @@ export async function truncateLargeToolOutput(
  * or log when compaction is happening.
  */
 export async function preCompactHandler(
-  hookInput: PreCompactHookInput
+	hookInput: PreCompactHookInput,
 ): Promise<HookOutput> {
-  const trigger = hookInput.trigger ?? "unknown";
-  const sessionId = hookInput.sessionId ?? "unknown";
+	const trigger = hookInput.trigger ?? "unknown";
+	const sessionId = hookInput.sessionId ?? "unknown";
 
-  console.log(
-    `[Hook] Context compaction triggered (${trigger}) for session ${sessionId}`
-  );
+	console.log(
+		`[Hook] Context compaction triggered (${trigger}) for session ${sessionId}`,
+	);
 
-  // Provide custom instructions for the compaction
-  const customInstructions = `
+	// Provide custom instructions for the compaction
+	const customInstructions = `
 When compacting context, prioritize:
 1. Keep test case status and progress information
 2. Keep recent tool outputs that show current state
@@ -123,10 +123,10 @@ When compacting context, prioritize:
 5. Preserve error messages and defect information
 `;
 
-  return {
-    decision: "approve",
-    customInstructions,
-  };
+	return {
+		decision: "approve",
+		customInstructions,
+	};
 }
 
 /**
@@ -135,21 +135,21 @@ When compacting context, prioritize:
  * @returns Dictionary of hooks to pass to ClaudeAgentOptions
  */
 export function createContextManagementHooks(): Record<string, HookMatcher[]> {
-  return {
-    PostToolUse: [
-      {
-        matcher: "mcp__chrome-devtools__*",
-        hooks: [truncateLargeToolOutput],
-        timeout: 5000,
-      },
-    ],
-    PreCompact: [
-      {
-        hooks: [preCompactHandler],
-        timeout: 5000,
-      },
-    ],
-  };
+	return {
+		PostToolUse: [
+			{
+				matcher: "mcp__chrome-devtools__*",
+				hooks: [truncateLargeToolOutput],
+				timeout: 5000,
+			},
+		],
+		PreCompact: [
+			{
+				hooks: [preCompactHandler],
+				timeout: 5000,
+			},
+		],
+	};
 }
 
 /**

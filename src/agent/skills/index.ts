@@ -6,8 +6,8 @@
  * Skills are modular capabilities that extend Claude's functionality.
  */
 
-import { join, dirname, resolve } from "path";
-import { existsSync } from "fs";
+import { existsSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 
 // Get the directory where this module is located
 const MODULE_DIR = dirname(new URL(import.meta.url).pathname);
@@ -26,14 +26,14 @@ export const DEFAULT_SKILLS = ["frontend-design"] as const;
  * Get the default plugins directory path
  */
 export function getDefaultPluginsDir(): string {
-  return DEFAULT_PLUGINS_DIR;
+	return DEFAULT_PLUGINS_DIR;
 }
 
 /**
  * Get the list of default skills to load
  */
 export function getDefaultSkills(): string[] {
-  return [...DEFAULT_SKILLS];
+	return [...DEFAULT_SKILLS];
 }
 
 /**
@@ -44,16 +44,16 @@ export function getDefaultSkills(): string[] {
  * @returns Path to the skill plugin directory, or null if not found
  */
 export function findSkillPluginPath(
-  skillName: string,
-  pluginsDir?: string
+	skillName: string,
+	pluginsDir?: string,
 ): string | null {
-  const searchDir = pluginsDir ?? DEFAULT_PLUGINS_DIR;
-  const skillPath = join(searchDir, skillName);
+	const searchDir = pluginsDir ?? DEFAULT_PLUGINS_DIR;
+	const skillPath = join(searchDir, skillName);
 
-  if (existsSync(skillPath)) {
-    return skillPath;
-  }
-  return null;
+	if (existsSync(skillPath)) {
+		return skillPath;
+	}
+	return null;
 }
 
 /**
@@ -67,23 +67,23 @@ export function findSkillPluginPath(
  * @returns True if valid plugin structure, False otherwise
  */
 export function validatePluginDirectory(pluginPath: string): boolean {
-  if (!existsSync(pluginPath)) {
-    return false;
-  }
+	if (!existsSync(pluginPath)) {
+		return false;
+	}
 
-  const pluginJson = join(pluginPath, ".claude-plugin", "plugin.json");
-  const skillDir = join(pluginPath, "skills");
+	const pluginJson = join(pluginPath, ".claude-plugin", "plugin.json");
+	const skillDir = join(pluginPath, "skills");
 
-  return existsSync(pluginJson) || existsSync(skillDir);
+	return existsSync(pluginJson) || existsSync(skillDir);
 }
 
 /**
  * Options for collecting plugin directories
  */
 export interface CollectPluginOptions {
-  pluginDirs?: string[];
-  loadDefaultSkills?: boolean;
-  verbose?: boolean;
+	pluginDirs?: string[];
+	loadDefaultSkills?: boolean;
+	verbose?: boolean;
 }
 
 /**
@@ -93,63 +93,59 @@ export interface CollectPluginOptions {
  * @returns List of validated plugin directory paths
  */
 export function collectPluginDirectories(
-  options: CollectPluginOptions = {}
+	options: CollectPluginOptions = {},
 ): string[] {
-  const {
-    pluginDirs = [],
-    loadDefaultSkills = true,
-    verbose = true,
-  } = options;
+	const { pluginDirs = [], loadDefaultSkills = true, verbose = true } = options;
 
-  const allPluginDirs: string[] = [];
+	const allPluginDirs: string[] = [];
 
-  // Load default skills if enabled
-  if (loadDefaultSkills) {
-    for (const skillName of DEFAULT_SKILLS) {
-      const skillPluginPath = join(DEFAULT_PLUGINS_DIR, skillName);
-      if (existsSync(skillPluginPath)) {
-        allPluginDirs.push(skillPluginPath);
-      } else if (verbose) {
-        console.log(
-          `Warning: Default skill '${skillName}' not found in ${DEFAULT_PLUGINS_DIR}`
-        );
-      }
-    }
-  }
+	// Load default skills if enabled
+	if (loadDefaultSkills) {
+		for (const skillName of DEFAULT_SKILLS) {
+			const skillPluginPath = join(DEFAULT_PLUGINS_DIR, skillName);
+			if (existsSync(skillPluginPath)) {
+				allPluginDirs.push(skillPluginPath);
+			} else if (verbose) {
+				console.log(
+					`Warning: Default skill '${skillName}' not found in ${DEFAULT_PLUGINS_DIR}`,
+				);
+			}
+		}
+	}
 
-  // Add user-specified plugin directories
-  allPluginDirs.push(...pluginDirs);
+	// Add user-specified plugin directories
+	allPluginDirs.push(...pluginDirs);
 
-  // Validate and deduplicate
-  const validatedPluginDirs: string[] = [];
-  for (const pluginDir of allPluginDirs) {
-    const pluginPath = resolve(pluginDir);
+	// Validate and deduplicate
+	const validatedPluginDirs: string[] = [];
+	for (const pluginDir of allPluginDirs) {
+		const pluginPath = resolve(pluginDir);
 
-    if (!existsSync(pluginPath)) {
-      if (verbose) {
-        console.log(`Warning: Plugin directory does not exist: ${pluginPath}`);
-      }
-      continue;
-    }
+		if (!existsSync(pluginPath)) {
+			if (verbose) {
+				console.log(`Warning: Plugin directory does not exist: ${pluginPath}`);
+			}
+			continue;
+		}
 
-    if (validatePluginDirectory(pluginPath)) {
-      // Avoid duplicates
-      if (!validatedPluginDirs.includes(pluginPath)) {
-        validatedPluginDirs.push(pluginPath);
-        if (verbose) {
-          const pluginName = pluginPath.split("/").pop() ?? pluginPath;
-          console.log(`   - Loading plugin: ${pluginName}`);
-        }
-      }
-    } else if (verbose) {
-      console.log(`Warning: Invalid plugin structure at: ${pluginPath}`);
-      console.log(
-        `         Expected .claude-plugin/plugin.json or skills/ directory`
-      );
-    }
-  }
+		if (validatePluginDirectory(pluginPath)) {
+			// Avoid duplicates
+			if (!validatedPluginDirs.includes(pluginPath)) {
+				validatedPluginDirs.push(pluginPath);
+				if (verbose) {
+					const pluginName = pluginPath.split("/").pop() ?? pluginPath;
+					console.log(`   - Loading plugin: ${pluginName}`);
+				}
+			}
+		} else if (verbose) {
+			console.log(`Warning: Invalid plugin structure at: ${pluginPath}`);
+			console.log(
+				`         Expected .claude-plugin/plugin.json or skills/ directory`,
+			);
+		}
+	}
 
-  return validatedPluginDirs;
+	return validatedPluginDirs;
 }
 
 /**
@@ -160,33 +156,33 @@ export function collectPluginDirectories(
  * @returns Content of SKILL.md file, or null if not found
  */
 export async function loadSkillContent(
-  skillName: string,
-  pluginsDir?: string
+	skillName: string,
+	pluginsDir?: string,
 ): Promise<string | null> {
-  const searchDir = pluginsDir ?? DEFAULT_PLUGINS_DIR;
+	const searchDir = pluginsDir ?? DEFAULT_PLUGINS_DIR;
 
-  // Try standard plugin structure: plugins/<skill>/skills/<skill>/SKILL.md
-  const skillMdPath = join(
-    searchDir,
-    skillName,
-    "skills",
-    skillName,
-    "SKILL.md"
-  );
+	// Try standard plugin structure: plugins/<skill>/skills/<skill>/SKILL.md
+	const skillMdPath = join(
+		searchDir,
+		skillName,
+		"skills",
+		skillName,
+		"SKILL.md",
+	);
 
-  if (existsSync(skillMdPath)) {
-    const file = Bun.file(skillMdPath);
-    return await file.text();
-  }
+	if (existsSync(skillMdPath)) {
+		const file = Bun.file(skillMdPath);
+		return await file.text();
+	}
 
-  // Try alternative structure: plugins/<skill>/SKILL.md
-  const altPath = join(searchDir, skillName, "SKILL.md");
-  if (existsSync(altPath)) {
-    const file = Bun.file(altPath);
-    return await file.text();
-  }
+	// Try alternative structure: plugins/<skill>/SKILL.md
+	const altPath = join(searchDir, skillName, "SKILL.md");
+	if (existsSync(altPath)) {
+		const file = Bun.file(altPath);
+		return await file.text();
+	}
 
-  return null;
+	return null;
 }
 
 /**
@@ -196,24 +192,24 @@ export async function loadSkillContent(
  * @returns List of skill names
  */
 export function findAvailableSkills(pluginsDir?: string): string[] {
-  const searchDir = pluginsDir ?? DEFAULT_PLUGINS_DIR;
+	const searchDir = pluginsDir ?? DEFAULT_PLUGINS_DIR;
 
-  if (!existsSync(searchDir)) {
-    return [];
-  }
+	if (!existsSync(searchDir)) {
+		return [];
+	}
 
-  const { readdirSync, statSync } = require("fs");
-  const entries = readdirSync(searchDir);
-  const skills: string[] = [];
+	const { readdirSync, statSync } = require("node:fs");
+	const entries = readdirSync(searchDir);
+	const skills: string[] = [];
 
-  for (const entry of entries) {
-    const entryPath = join(searchDir, entry);
-    if (statSync(entryPath).isDirectory()) {
-      if (validatePluginDirectory(entryPath)) {
-        skills.push(entry);
-      }
-    }
-  }
+	for (const entry of entries) {
+		const entryPath = join(searchDir, entry);
+		if (statSync(entryPath).isDirectory()) {
+			if (validatePluginDirectory(entryPath)) {
+				skills.push(entry);
+			}
+		}
+	}
 
-  return skills;
+	return skills;
 }

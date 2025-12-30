@@ -5,7 +5,7 @@
  * Configuration constants and utilities for the autonomous testing agent.
  */
 
-import { dirname, join } from "path";
+import { dirname, join } from "node:path";
 
 // Get the directory where this module is located
 const MODULE_DIR = dirname(new URL(import.meta.url).pathname);
@@ -51,69 +51,69 @@ export const AUTO_CONTINUE_DELAY_MS = 3000;
  * Default system prompt for the agent
  */
 export const DEFAULT_SYSTEM_PROMPT =
-  "You are an expert full-stack developer and QA engineer " +
-  "with deep expertise in end-to-end testing.";
+	"You are an expert full-stack developer and QA engineer " +
+	"with deep expertise in end-to-end testing.";
 
 /**
  * Agent paths configuration
  */
 export const AGENT_PATHS = {
-  /** Root directory of the agent module */
-  moduleDir: MODULE_DIR,
-  /** Prompts directory */
-  promptsDir: join(MODULE_DIR, "prompts"),
-  /** Templates directory */
-  templatesDir: join(MODULE_DIR, "templates"),
-  /** Utils directory */
-  utilsDir: join(MODULE_DIR, "utils"),
-  /** Plugins directory */
-  pluginsDir: join(MODULE_DIR, "plugins"),
-  /** Project root (parent of src/) */
-  projectRoot: join(MODULE_DIR, "..", ".."),
+	/** Root directory of the agent module */
+	moduleDir: MODULE_DIR,
+	/** Prompts directory */
+	promptsDir: join(MODULE_DIR, "prompts"),
+	/** Templates directory */
+	templatesDir: join(MODULE_DIR, "templates"),
+	/** Utils directory */
+	utilsDir: join(MODULE_DIR, "utils"),
+	/** Plugins directory */
+	pluginsDir: join(MODULE_DIR, "plugins"),
+	/** Project root (parent of src/) */
+	projectRoot: join(MODULE_DIR, "..", ".."),
 } as const;
 
 /**
  * Agent options interface
  */
 export interface AgentOptions {
-  /** Directory for the testing project */
-  projectDir: string;
-  /** Claude model to use */
-  model?: string;
-  /** Maximum number of iterations (null for unlimited) */
-  maxIterations?: number | null;
+	/** Directory for the testing project */
+	projectDir: string;
+	/** Claude model to use */
+	model?: string;
+	/** Maximum number of iterations (null for unlimited) */
+	maxIterations?: number | null;
 }
 
 /**
  * Client configuration options
  */
 export interface ClientOptions {
-  /** Directory for the project */
-  projectDir: string;
-  /** Claude model to use */
-  model: string;
-  /** Custom system prompt (replaces default) */
-  systemPrompt?: string;
-  /** Text to append to the system prompt */
-  appendSystemPrompt?: string;
-  /** List of skill names to load */
-  skills?: string[];
-  /** Additional plugin directories */
-  pluginDirs?: string[];
-  /** Skill content (SKILL.md) to embed in system prompt */
-  skillContent?: string;
-  /** Whether to load default skills (default: true) */
-  loadDefaultSkills?: boolean;
+	/** Directory for the project */
+	projectDir: string;
+	/** Claude model to use */
+	model: string;
+	/** Custom system prompt (replaces default) */
+	systemPrompt?: string;
+	/** Text to append to the system prompt */
+	appendSystemPrompt?: string;
+	/** List of skill names to load */
+	skills?: string[];
+	/** Additional plugin directories */
+	pluginDirs?: string[];
+	/** Skill content (SKILL.md) to embed in system prompt */
+	skillContent?: string;
+	/** Whether to load default skills (default: true) */
+	loadDefaultSkills?: boolean;
 }
 
 /**
  * Check if a value indicates AWS Bedrock should be used
  */
 export function isBedrockEnabled(value: string | undefined): boolean {
-  if (!value) return false;
-  return BEDROCK_ENV_VALUES.includes(
-    value.toLowerCase() as (typeof BEDROCK_ENV_VALUES)[number]
-  );
+	if (!value) return false;
+	return BEDROCK_ENV_VALUES.includes(
+		value.toLowerCase() as (typeof BEDROCK_ENV_VALUES)[number],
+	);
 }
 
 /**
@@ -124,14 +124,14 @@ export function isBedrockEnabled(value: string | undefined): boolean {
  * @returns Normalized path
  */
 export function normalizeProjectPath(projectDir: string): string {
-  // If already under generations/ or is absolute, use as-is
-  if (
-    projectDir.startsWith(`${GENERATIONS_DIR}/`) ||
-    projectDir.startsWith("/")
-  ) {
-    return projectDir;
-  }
+	// If already under generations/ or is absolute, use as-is
+	if (
+		projectDir.startsWith(`${GENERATIONS_DIR}/`) ||
+		projectDir.startsWith("/")
+	) {
+		return projectDir;
+	}
 
-  // Place relative paths under generations/
-  return join(GENERATIONS_DIR, projectDir);
+	// Place relative paths under generations/
+	return join(GENERATIONS_DIR, projectDir);
 }

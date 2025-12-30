@@ -542,7 +542,7 @@
 
     <script>
         let autoRefresh = null;
-        let selectedJobs = new Set();
+        const selectedJobs = new Set();
 
         document.addEventListener('DOMContentLoaded', () => {
             loadJobs();
@@ -555,7 +555,7 @@
                 const result = await response.json();
 
                 if (!result.success) {
-                    showError('Failed to load jobs: ' + result.error);
+                    showError(`Failed to load jobs: ${result.error}`);
                     return;
                 }
 
@@ -568,7 +568,7 @@
                 document.getElementById('jobsPanel').style.display = 'block';
 
             } catch (error) {
-                showError('Network Error: ' + error.message);
+                showError(`Network Error: ${error.message}`);
                 document.getElementById('loadingContainer').style.display = 'none';
             }
         }
@@ -631,7 +631,7 @@
             `;
 
             jobs.forEach(job => {
-                const jobIdShort = job.job_id.substring(0, 12) + '...';
+                const jobIdShort = `${job.job_id.substring(0, 12)}...`;
                 const isChecked = selectedJobs.has(job.job_id) ? 'checked' : '';
                 const canDelete = job.status !== 'running';
                 tableHtml += `
@@ -716,7 +716,7 @@
         }
 
         // Selection functions
-        function toggleJobSelection(jobId, isSelected) {
+        function _toggleJobSelection(jobId, isSelected) {
             if (isSelected) {
                 selectedJobs.add(jobId);
             } else {
@@ -725,7 +725,7 @@
             updateBatchActionsBar();
         }
 
-        function toggleSelectAll(checkbox) {
+        function _toggleSelectAll(checkbox) {
             const allCheckboxes = document.querySelectorAll('.job-checkbox');
             allCheckboxes.forEach(cb => {
                 cb.checked = checkbox.checked;
@@ -738,7 +738,7 @@
             updateBatchActionsBar();
         }
 
-        function clearSelection() {
+        function _clearSelection() {
             selectedJobs.clear();
             const allCheckboxes = document.querySelectorAll('.job-checkbox');
             allCheckboxes.forEach(cb => cb.checked = false);
@@ -760,7 +760,7 @@
         }
 
         // Delete functions
-        async function deleteJob(jobId) {
+        async function _deleteJob(jobId) {
             if (!confirm('Are you sure you want to delete this job?')) {
                 return;
             }
@@ -776,14 +776,14 @@
                     selectedJobs.delete(jobId);
                     loadJobs();
                 } else {
-                    showNotification('Delete failed: ' + result.error, 'error');
+                    showNotification(`Delete failed: ${result.error}`, 'error');
                 }
             } catch (error) {
-                showNotification('Delete failed: ' + error.message, 'error');
+                showNotification(`Delete failed: ${error.message}`, 'error');
             }
         }
 
-        async function deleteSelectedJobs() {
+        async function _deleteSelectedJobs() {
             if (selectedJobs.size === 0) return;
 
             const count = selectedJobs.size;
@@ -815,7 +815,7 @@
                 }
                 loadJobs();
             } catch (error) {
-                showNotification('Batch delete failed: ' + error.message, 'error');
+                showNotification(`Batch delete failed: ${error.message}`, 'error');
             }
         }
 

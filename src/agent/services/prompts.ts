@@ -5,8 +5,8 @@
  * Functions for loading prompt templates from the prompts directory.
  */
 
-import { join, dirname, resolve } from "path";
-import { existsSync, mkdirSync, cpSync, statSync } from "fs";
+import { cpSync, existsSync, mkdirSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 
 // Get the directory where this module is located
 const MODULE_DIR = dirname(new URL(import.meta.url).pathname);
@@ -25,28 +25,28 @@ export const ROOT_DIR = join(MODULE_DIR, "..", "..", ".."); // Project root
  * @throws Error if the path is outside expected boundaries
  */
 export function validateProjectDirectory(projectDir: string): string {
-  const resolvedPath = resolve(projectDir);
-  const cwd = resolve(process.cwd());
+	const resolvedPath = resolve(projectDir);
+	const cwd = resolve(process.cwd());
 
-  const expectedParents = [
-    join(cwd, "generations"),
-    join(cwd, "autonomous_demo_project"),
-    join(cwd, "data", "reports"),
-    cwd,
-  ];
+	const expectedParents = [
+		join(cwd, "generations"),
+		join(cwd, "autonomous_demo_project"),
+		join(cwd, "data", "reports"),
+		cwd,
+	];
 
-  const isValid = expectedParents.some((parent) =>
-    resolvedPath.startsWith(parent)
-  );
+	const isValid = expectedParents.some((parent) =>
+		resolvedPath.startsWith(parent),
+	);
 
-  if (!isValid) {
-    throw new Error(
-      `Invalid project directory: ${projectDir}\n` +
-        `Project directory must be within: ${expectedParents.join(", ")}`
-    );
-  }
+	if (!isValid) {
+		throw new Error(
+			`Invalid project directory: ${projectDir}\n` +
+				`Project directory must be within: ${expectedParents.join(", ")}`,
+		);
+	}
 
-  return resolvedPath;
+	return resolvedPath;
 }
 
 /**
@@ -57,30 +57,30 @@ export function validateProjectDirectory(projectDir: string): string {
  * @throws Error if destName contains path traversal sequences or invalid characters
  */
 export function validateDestName(destName: string): string {
-  // Check for path traversal sequences
-  if (destName.includes("..")) {
-    throw new Error(`Path traversal detected in destName: ${destName}`);
-  }
+	// Check for path traversal sequences
+	if (destName.includes("..")) {
+		throw new Error(`Path traversal detected in destName: ${destName}`);
+	}
 
-  // Check for absolute paths
-  if (destName.startsWith("/") || destName.startsWith("\\")) {
-    throw new Error(`Absolute paths not allowed in destName: ${destName}`);
-  }
+	// Check for absolute paths
+	if (destName.startsWith("/") || destName.startsWith("\\")) {
+		throw new Error(`Absolute paths not allowed in destName: ${destName}`);
+	}
 
-  // Check for null bytes
-  if (destName.includes("\x00")) {
-    throw new Error(`Null bytes not allowed in destName: ${destName}`);
-  }
+	// Check for null bytes
+	if (destName.includes("\x00")) {
+		throw new Error(`Null bytes not allowed in destName: ${destName}`);
+	}
 
-  // Check for other dangerous characters
-  const dangerousChars = ["<", ">", ":", '"', "|", "?", "*"];
-  for (const char of dangerousChars) {
-    if (destName.includes(char)) {
-      throw new Error(`Invalid character '${char}' in destName: ${destName}`);
-    }
-  }
+	// Check for other dangerous characters
+	const dangerousChars = ["<", ">", ":", '"', "|", "?", "*"];
+	for (const char of dangerousChars) {
+		if (destName.includes(char)) {
+			throw new Error(`Invalid character '${char}' in destName: ${destName}`);
+		}
+	}
 
-  return destName;
+	return destName;
 }
 
 /**
@@ -90,9 +90,9 @@ export function validateDestName(destName: string): string {
  * @returns Content of the prompt template
  */
 export async function loadPrompt(name: string): Promise<string> {
-  const promptPath = join(PROMPTS_DIR, `${name}.md`);
-  const file = Bun.file(promptPath);
-  return await file.text();
+	const promptPath = join(PROMPTS_DIR, `${name}.md`);
+	const file = Bun.file(promptPath);
+	return await file.text();
 }
 
 /**
@@ -101,7 +101,7 @@ export async function loadPrompt(name: string): Promise<string> {
  * @returns Test planner prompt content
  */
 export async function getTestPlannerPrompt(): Promise<string> {
-  return loadPrompt("test_planner_prompt");
+	return loadPrompt("test_planner_prompt");
 }
 
 /**
@@ -110,7 +110,7 @@ export async function getTestPlannerPrompt(): Promise<string> {
  * @returns Test executor prompt content
  */
 export async function getTestExecutorPrompt(): Promise<string> {
-  return loadPrompt("test_executor_prompt");
+	return loadPrompt("test_executor_prompt");
 }
 
 /**
@@ -122,43 +122,43 @@ export async function getTestExecutorPrompt(): Promise<string> {
  * @param isDirectory - Whether the source is a directory
  */
 export function copyToProject(
-  projectDir: string,
-  sourcePath: string,
-  destName: string,
-  isDirectory: boolean = false
+	projectDir: string,
+	sourcePath: string,
+	destName: string,
+	isDirectory: boolean = false,
 ): void {
-  // Validate project directory
-  const validatedDir = validateProjectDirectory(projectDir);
+	// Validate project directory
+	const validatedDir = validateProjectDirectory(projectDir);
 
-  // Validate destName
-  const validatedDestName = validateDestName(destName);
+	// Validate destName
+	const validatedDestName = validateDestName(destName);
 
-  const destPath = join(validatedDir, validatedDestName);
+	const destPath = join(validatedDir, validatedDestName);
 
-  // Additional safety check
-  const destPathResolved = resolve(destPath);
-  const validatedDirResolved = resolve(validatedDir);
-  if (!destPathResolved.startsWith(validatedDirResolved)) {
-    throw new Error(`Destination path escapes project directory: ${destName}`);
-  }
+	// Additional safety check
+	const destPathResolved = resolve(destPath);
+	const validatedDirResolved = resolve(validatedDir);
+	if (!destPathResolved.startsWith(validatedDirResolved)) {
+		throw new Error(`Destination path escapes project directory: ${destName}`);
+	}
 
-  if (existsSync(destPath)) {
-    console.log(`${validatedDestName} already exists in project directory`);
-    return;
-  }
+	if (existsSync(destPath)) {
+		console.log(`${validatedDestName} already exists in project directory`);
+		return;
+	}
 
-  try {
-    if (isDirectory) {
-      cpSync(sourcePath, destPath, { recursive: true });
-    } else {
-      cpSync(sourcePath, destPath);
-    }
+	try {
+		if (isDirectory) {
+			cpSync(sourcePath, destPath, { recursive: true });
+		} else {
+			cpSync(sourcePath, destPath);
+		}
 
-    console.log(`Copied ${validatedDestName} to project directory`);
-  } catch (error) {
-    console.error(`Failed to copy ${validatedDestName}: ${error}`);
-    throw error;
-  }
+		console.log(`Copied ${validatedDestName} to project directory`);
+	} catch (error) {
+		console.error(`Failed to copy ${validatedDestName}: ${error}`);
+		throw error;
+	}
 }
 
 /**
@@ -167,12 +167,12 @@ export function copyToProject(
  * @param projectDir - Target project directory
  */
 export function copyTestSpecToProject(projectDir: string): void {
-  copyToProject(
-    projectDir,
-    join(ROOT_DIR, "test_spec.txt"),
-    "test_spec.txt",
-    false
-  );
+	copyToProject(
+		projectDir,
+		join(ROOT_DIR, "test_spec.txt"),
+		"test_spec.txt",
+		false,
+	);
 }
 
 /**
@@ -181,7 +181,7 @@ export function copyTestSpecToProject(projectDir: string): void {
  * @param projectDir - Target project directory
  */
 export function copyTemplatesToProject(projectDir: string): void {
-  copyToProject(projectDir, TEMPLATES_DIR, "templates", true);
+	copyToProject(projectDir, TEMPLATES_DIR, "templates", true);
 }
 
 /**
@@ -190,7 +190,7 @@ export function copyTemplatesToProject(projectDir: string): void {
  * @param projectDir - Target project directory
  */
 export function copyUtilsToProject(projectDir: string): void {
-  copyToProject(projectDir, UTILS_DIR, "utils", true);
+	copyToProject(projectDir, UTILS_DIR, "utils", true);
 }
 
 /**
@@ -199,13 +199,13 @@ export function copyUtilsToProject(projectDir: string): void {
  * @param projectDir - Target project directory
  */
 export function setupProjectDirectory(projectDir: string): void {
-  // Ensure project directory exists
-  if (!existsSync(projectDir)) {
-    mkdirSync(projectDir, { recursive: true });
-  }
+	// Ensure project directory exists
+	if (!existsSync(projectDir)) {
+		mkdirSync(projectDir, { recursive: true });
+	}
 
-  // Copy required files
-  copyTestSpecToProject(projectDir);
-  copyTemplatesToProject(projectDir);
-  copyUtilsToProject(projectDir);
+	// Copy required files
+	copyTestSpecToProject(projectDir);
+	copyTemplatesToProject(projectDir);
+	copyUtilsToProject(projectDir);
 }
