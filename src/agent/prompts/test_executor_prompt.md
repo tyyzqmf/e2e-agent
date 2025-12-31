@@ -166,21 +166,27 @@ Selected Test: TC-XXX
 
 **4.3 Context Management (CRITICAL)**
 
-To prevent "Input is too long" errors that crash the session:
+**ALWAYS use `filePath` with `take_snapshot`** - Without it, full DOM (~50K tokens) floods context and crashes session.
 
-| Practice | Recommendation |
-|----------|----------------|
-| `take_snapshot` | Use SPARINGLY - JupyterLab DOMs are huge (100K+ tokens). Prefer `take_screenshot` for verification |
-| Element targeting | Use targeted selectors instead of full page snapshots |
-| Browser cleanup | Navigate to `about:blank` between test cases to clear state |
-| Evidence | Summarize results instead of copying full outputs |
-| Session limits | If context feels heavy, end session gracefully - progress is saved |
+```python
+# CORRECT (~100 tokens)
+take_snapshot(filePath="./snapshot.txt")
+grep("button|login", path="./snapshot.txt")  # Search for UIDs
 
-**When you see "Input is too long" error:**
-- The session has accumulated too much context
-- End gracefully - don't retry the same action
-- Progress is saved in `test_cases.json`
-- Next session will continue where you left off
+# WRONG (~50,000 tokens) - NEVER DO THIS!
+take_snapshot()
+```
+
+**Workflow:**
+```
+1. take_screenshot(filePath="screenshots/01.png")    # Evidence
+2. take_snapshot(filePath="./snapshot.txt")          # Save DOM to file
+3. grep("button|input", path="./snapshot.txt")       # Find UIDs
+4. click(uid="..."), fill(uid="...")                 # Use UIDs
+5. take_screenshot(filePath="screenshots/02.png")    # Verify
+```
+
+**"Input is too long" error?** End session gracefully - progress saved in `test_cases.json`
 
 **4.4 Multi-Tab Test Handling**
 
@@ -203,7 +209,7 @@ for attempt in range(15):
 
 # 4. Switch to new tab
 select_page(pageIdx=1)
-take_snapshot()  # Verify correct tab
+take_snapshot(filePath="./snapshot.txt")  # Verify correct tab
 
 # 5. Work in new tab, take screenshots
 # ...

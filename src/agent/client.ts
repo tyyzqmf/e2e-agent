@@ -2,25 +2,49 @@
  * Claude SDK Client Configuration
  * =================================
  *
- * Functions for creating and configuring the Claude Code SDK client.
+ * Functions for creating and configuring the Claude Agent SDK client.
+ * Uses @anthropic-ai/claude-agent-sdk for programmatic agent interaction.
  */
 
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { GetCallerIdentityCommand, STSClient } from "@aws-sdk/client-sts";
 import { fromNodeProviderChain } from "@aws-sdk/credential-providers";
-import { type Subprocess, spawn } from "bun";
+import {
+	query,
+	type Query,
+	type SDKMessage,
+	type SDKResultMessage,
+	type SDKAssistantMessage,
+	type SDKUserMessage,
+	type SDKSystemMessage,
+	type McpStdioServerConfig,
+	type Options as SDKOptions,
+	type SdkBeta,
+} from "@anthropic-ai/claude-agent-sdk";
 import type { ClientOptions } from "./config.ts";
 import {
 	BEDROCK_ENV_VALUES,
+	CACHE_COST_MULTIPLIERS,
+	CONTEXT_COMPRESSION_THRESHOLD,
+	CONTEXT_WINDOW,
 	DEFAULT_SYSTEM_PROMPT,
+	ENABLE_1M_CONTEXT,
+	ENABLE_PROMPT_CACHING,
+	ENABLE_TOKEN_MONITORING,
+	getCompressionThresholdTokens,
 	MAX_TURNS,
+	MIN_CACHEABLE_TOKENS,
 	SETTINGS_FILENAME,
+	TOKEN_LOG_INTERVAL,
+	TOKEN_WARNING_THRESHOLDS,
 } from "./config.ts";
 import {
 	CONTEXT_MANAGEMENT_PROMPT,
 	createSecuritySettings,
+	getAllAllowedTools,
 	getDefaultMcpServers,
+	type McpServerConfig,
 	type SecuritySettings,
 } from "./security/index.ts";
 import {
@@ -42,8 +66,7 @@ interface AuthConfig {
 }
 
 /**
- * Claude Code SDK client wrapper
- * Since we don't have the actual SDK, we'll create a wrapper that spawns claude CLI
+ * Claude Agent SDK client wrapper
  */
 export interface ClaudeClient {
 	/** Send a query to the agent */
@@ -52,15 +75,16 @@ export interface ClaudeClient {
 	receiveResponse(): AsyncGenerator<AgentMessage, void, unknown>;
 	/** Cleanup resources */
 	cleanup(): Promise<void>;
-	/** Get the subprocess (if available) */
-	getProcess(): Subprocess | null;
+	/** Get the subprocess (if available) - deprecated for SDK */
+	getProcess(): null;
 }
 
 /**
- * Agent message types
+ * Agent message types (aligned with SDK message format)
  */
 export interface AgentMessage {
 	type: string;
+	subtype?: string;
 	content?: MessageContent[];
 	usage?: {
 		input_tokens?: number;
@@ -72,6 +96,15 @@ export interface AgentMessage {
 	duration_ms?: number;
 	num_turns?: number;
 	session_id?: string;
+	tool_name?: string;
+	input?: unknown;
+	result?: string;
+	error?: {
+		type?: string;
+		message?: string;
+		tool?: string;
+	};
+	cost?: number;
 }
 
 export interface MessageContent {
@@ -209,7 +242,7 @@ function printClientConfiguration(
 	} else {
 		console.log("   - Using Anthropic API");
 	}
-	console.log("   - Sandbox enabled (OS-level bash isolation)");
+	console.log("   - Using Claude Agent SDK");
 	console.log(`   - Filesystem restricted to: ${join(settingsFile, "..")}`);
 	console.log("   - MCP servers: chrome-devtools (browser automation)");
 	console.log();
@@ -220,30 +253,285 @@ function printClientConfiguration(
 // ====================================
 
 /**
- * Build the final system prompt
+ * Build the final system prompt optimized for prompt caching.
+ *
+ * Prompt structure for optimal caching:
+ * 1. Static base prompt (highly cacheable)
+ * 2. Context management guidelines (stable)
+ * 3. Skill content (semi-stable)
+ * 4. Session-specific appends (variable)
+ *
+ * This ordering ensures maximum cache hit rate as stable
+ * content is at the beginning of the prompt.
  */
 function buildSystemPrompt(options: {
 	base?: string;
 	append?: string;
 	skillContent?: string;
 }): string {
-	let prompt = options.base ?? DEFAULT_SYSTEM_PROMPT;
+	// Start with stable, cacheable content
+	const parts: string[] = [];
 
-	if (options.append) {
-		prompt = `${prompt}\n\n${options.append}`;
-	}
+	// 1. Base system prompt (most stable - cache this)
+	parts.push(options.base ?? DEFAULT_SYSTEM_PROMPT);
+
+	// 2. Context management guidelines (stable)
+	parts.push(CONTEXT_MANAGEMENT_PROMPT);
+
+	// 3. Skill content (semi-stable, changes per skill set)
 	if (options.skillContent) {
-		prompt = `${prompt}\n\n${options.skillContent}`;
+		parts.push(options.skillContent);
 	}
 
-	// Add context management guidelines
-	prompt = `${prompt}\n\n${CONTEXT_MANAGEMENT_PROMPT}`;
+	// 4. Session-specific appends (variable - at the end)
+	if (options.append) {
+		parts.push(options.append);
+	}
+
+	const prompt = parts.join("\n\n");
+
+	// Log prompt size for caching optimization
+	if (ENABLE_PROMPT_CACHING) {
+		// Rough token estimate: ~4 chars per token
+		const estimatedTokens = Math.ceil(prompt.length / 4);
+		const cacheEligible = estimatedTokens >= MIN_CACHEABLE_TOKENS;
+		console.log(
+			`[Prompt Cache] Size: ~${estimatedTokens} tokens, ` +
+				`Cache eligible: ${cacheEligible ? "Yes" : "No (min: " + MIN_CACHEABLE_TOKENS + ")"}`,
+		);
+	}
 
 	return prompt;
 }
 
 /**
- * Create a Claude Code SDK client with multi-layered security.
+ * Calculate and log cache cost savings
+ */
+function logCacheStatistics(usage: {
+	input_tokens?: number;
+	cache_creation_input_tokens?: number;
+	cache_read_input_tokens?: number;
+}): void {
+	const inputTokens = usage.input_tokens ?? 0;
+	const cacheCreationTokens = usage.cache_creation_input_tokens ?? 0;
+	const cacheReadTokens = usage.cache_read_input_tokens ?? 0;
+
+	if (cacheCreationTokens === 0 && cacheReadTokens === 0) {
+		return; // No cache activity
+	}
+
+	// Calculate cost savings
+	// Without cache: all tokens at 1x cost
+	// With cache: creation at 1.25x, reads at 0.1x
+	const withoutCacheCost = inputTokens + cacheCreationTokens + cacheReadTokens;
+	const withCacheCost =
+		inputTokens +
+		cacheCreationTokens * CACHE_COST_MULTIPLIERS.WRITE +
+		cacheReadTokens * CACHE_COST_MULTIPLIERS.READ;
+	const savings = withoutCacheCost - withCacheCost;
+	const savingsPercent =
+		withoutCacheCost > 0 ? (savings / withoutCacheCost) * 100 : 0;
+
+	console.log(
+		`[Prompt Cache] Created: ${cacheCreationTokens} tokens, ` +
+			`Read: ${cacheReadTokens} tokens, ` +
+			`Savings: ~${savingsPercent.toFixed(1)}%`,
+	);
+}
+
+// ====================================
+// Token Usage Monitor
+// ====================================
+
+/**
+ * Real-time token usage monitor
+ * Tracks cumulative usage and per-tool consumption
+ */
+class TokenUsageMonitor {
+	private contextWindow: number;
+	private totalInputTokens: number = 0;
+	private totalOutputTokens: number = 0;
+	private lastLoggedTokens: number = 0;
+	private currentToolName: string | null = null;
+	private toolStartTokens: number = 0;
+	private toolUsageStats: Map<string, { calls: number; tokens: number }> =
+		new Map();
+	private warningLevel: "none" | "warn" | "critical" | "imminent" = "none";
+
+	constructor(contextWindow: number) {
+		this.contextWindow = contextWindow;
+	}
+
+	/**
+	 * Record the start of a tool call
+	 */
+	onToolStart(toolName: string): void {
+		this.currentToolName = toolName;
+		this.toolStartTokens = this.totalInputTokens;
+	}
+
+	/**
+	 * Record the end of a tool call and calculate tokens used
+	 */
+	onToolEnd(): void {
+		if (!this.currentToolName) return;
+
+		const tokensUsed = this.totalInputTokens - this.toolStartTokens;
+		const stats = this.toolUsageStats.get(this.currentToolName) ?? {
+			calls: 0,
+			tokens: 0,
+		};
+		stats.calls++;
+		stats.tokens += tokensUsed;
+		this.toolUsageStats.set(this.currentToolName, stats);
+
+		// Log if this tool used significant tokens
+		if (tokensUsed > 5000) {
+			console.log(
+				`[Token Monitor] Tool "${this.currentToolName}" used ${tokensUsed} tokens`,
+			);
+		}
+
+		this.currentToolName = null;
+	}
+
+	/**
+	 * Update token usage from a message
+	 */
+	updateUsage(inputTokens: number, outputTokens: number): void {
+		this.totalInputTokens = inputTokens;
+		this.totalOutputTokens = outputTokens;
+
+		// Check if we should log (every TOKEN_LOG_INTERVAL tokens)
+		if (this.totalInputTokens - this.lastLoggedTokens >= TOKEN_LOG_INTERVAL) {
+			this.logCurrentUsage();
+			this.lastLoggedTokens = this.totalInputTokens;
+		}
+
+		// Check warning thresholds
+		this.checkWarningThresholds();
+	}
+
+	/**
+	 * Log current token usage
+	 */
+	private logCurrentUsage(): void {
+		const percentage = (this.totalInputTokens / this.contextWindow) * 100;
+		console.log(
+			`[Token Monitor] Usage: ${(this.totalInputTokens / 1000).toFixed(1)}K / ` +
+				`${(this.contextWindow / 1000).toFixed(0)}K tokens (${percentage.toFixed(1)}%)`,
+		);
+	}
+
+	/**
+	 * Check and emit warnings based on usage thresholds
+	 */
+	private checkWarningThresholds(): void {
+		const usageRatio = this.totalInputTokens / this.contextWindow;
+
+		if (
+			usageRatio >= TOKEN_WARNING_THRESHOLDS.COMPRESSION_IMMINENT &&
+			this.warningLevel !== "imminent"
+		) {
+			this.warningLevel = "imminent";
+			console.warn(
+				`\n⚠️  [Token Monitor] WARNING: Context at ${(usageRatio * 100).toFixed(1)}% - ` +
+					`COMPRESSION IMMINENT!\n` +
+					`    Current: ${(this.totalInputTokens / 1000).toFixed(1)}K tokens\n` +
+					`    Threshold: ${(this.contextWindow * TOKEN_WARNING_THRESHOLDS.COMPRESSION_IMMINENT / 1000).toFixed(0)}K tokens\n`,
+			);
+		} else if (
+			usageRatio >= TOKEN_WARNING_THRESHOLDS.CRITICAL &&
+			this.warningLevel !== "critical" &&
+			this.warningLevel !== "imminent"
+		) {
+			this.warningLevel = "critical";
+			console.warn(
+				`\n⚠️  [Token Monitor] CRITICAL: Context at ${(usageRatio * 100).toFixed(1)}% - ` +
+					`approaching compression threshold\n`,
+			);
+		} else if (
+			usageRatio >= TOKEN_WARNING_THRESHOLDS.WARN &&
+			this.warningLevel === "none"
+		) {
+			this.warningLevel = "warn";
+			console.log(
+				`[Token Monitor] Note: Context usage at ${(usageRatio * 100).toFixed(1)}%`,
+			);
+		}
+	}
+
+	/**
+	 * Get summary of tool usage statistics
+	 */
+	getToolUsageSummary(): string {
+		if (this.toolUsageStats.size === 0) {
+			return "No tool usage recorded";
+		}
+
+		// Sort by tokens used (descending)
+		const sorted = [...this.toolUsageStats.entries()].sort(
+			(a, b) => b[1].tokens - a[1].tokens,
+		);
+
+		const lines = ["[Token Monitor] Tool Usage Summary (Token Killers):"];
+		for (const [tool, stats] of sorted.slice(0, 10)) {
+			// Top 10
+			const avgTokens = Math.round(stats.tokens / stats.calls);
+			lines.push(
+				`   ${tool}: ${stats.tokens} tokens (${stats.calls} calls, avg: ${avgTokens})`,
+			);
+		}
+
+		return lines.join("\n");
+	}
+
+	/**
+	 * Print final summary
+	 */
+	printSummary(): void {
+		console.log("\n" + "─".repeat(60));
+		console.log("[Token Monitor] Session Summary");
+		console.log("─".repeat(60));
+		console.log(
+			`Total Input: ${(this.totalInputTokens / 1000).toFixed(1)}K tokens`,
+		);
+		console.log(
+			`Total Output: ${(this.totalOutputTokens / 1000).toFixed(1)}K tokens`,
+		);
+		console.log(
+			`Context Used: ${((this.totalInputTokens / this.contextWindow) * 100).toFixed(1)}%`,
+		);
+		console.log(this.getToolUsageSummary());
+		console.log("─".repeat(60) + "\n");
+	}
+}
+
+/**
+ * Convert MCP server configs to SDK format
+ */
+function convertMcpServersToSdkFormat(
+	servers: Record<string, McpServerConfig>,
+): Record<string, McpStdioServerConfig> {
+	const result: Record<string, McpStdioServerConfig> = {};
+
+	for (const [name, config] of Object.entries(servers)) {
+		const sdkConfig: McpStdioServerConfig = {
+			type: "stdio",
+			command: config.command,
+			args: config.args,
+		};
+		if (config.env) {
+			sdkConfig.env = config.env;
+		}
+		result[name] = sdkConfig;
+	}
+
+	return result;
+}
+
+/**
+ * Create a Claude Agent SDK client with multi-layered security.
  *
  * @param options - Client configuration options
  * @returns Configured client wrapper
@@ -264,6 +552,11 @@ export async function createClient(
 
 	// Configure authentication
 	const { useBedrock, awsRegion, envVars } = await configureAuthentication();
+
+	// Set environment variables for SDK
+	for (const [key, value] of Object.entries(envVars)) {
+		process.env[key] = value;
+	}
 
 	// Create and write security settings
 	const securitySettings = createSecuritySettings(projectDir);
@@ -302,229 +595,377 @@ export async function createClient(
 
 	// Get MCP servers configuration
 	const mcpServers = getDefaultMcpServers();
+	const sdkMcpServers = convertMcpServersToSdkFormat(mcpServers);
 
-	// Build environment variables
-	const env: Record<string, string> = {
-		...(process.env as Record<string, string>),
+	// Get allowed tools list
+	const allowedTools = getAllAllowedTools();
+
+	// Build environment with both process.env and custom envVars
+	const env: Record<string, string | undefined> = {
+		...(process.env as Record<string, string | undefined>),
 		...envVars,
 	};
 
-	// Create a client wrapper that uses claude CLI
-	return createClaudeCliClient({
+	// Create a client wrapper that uses the SDK
+	return createSdkClient({
 		model,
 		systemPrompt: finalSystemPrompt,
 		projectDir,
-		settingsFile,
-		env,
+		mcpServers: sdkMcpServers,
+		allowedTools,
 		pluginDirs: validatedPluginDirs,
-		mcpServers,
+		maxTurns: MAX_TURNS,
+		env,
 	});
 }
 
 // ====================================
-// Claude CLI Client Implementation
+// SDK Client Implementation
 // ====================================
 
-interface ClaudeCliClientOptions {
+interface SdkClientOptions {
 	model: string;
 	systemPrompt: string;
 	projectDir: string;
-	settingsFile: string;
-	env: Record<string, string>;
+	mcpServers: Record<string, McpStdioServerConfig>;
+	allowedTools: string[];
 	pluginDirs: string[];
-	mcpServers: Record<string, { command: string; args: string[] }>;
+	maxTurns: number;
+	env: Record<string, string | undefined>;
 }
 
 /**
- * Create a client that uses the claude CLI
+ * Create a client that uses the Claude Agent SDK
  */
-function createClaudeCliClient(options: ClaudeCliClientOptions): ClaudeClient {
-	let process: Subprocess | null = null;
-	let _responseBuffer = "";
-	const _responseResolve: ((value: undefined) => void) | null = null;
+function createSdkClient(options: SdkClientOptions): ClaudeClient {
+	let currentQuery: Query | null = null;
+	let sessionStartTime: number = 0;
+	let abortController: AbortController | null = null;
+	let tokenMonitor: TokenUsageMonitor | null = null;
 
 	return {
 		async query(message: string): Promise<void> {
-			// Build claude command
-			const args = [
-				"--print",
-				"--model",
-				options.model,
-				"--max-turns",
-				String(MAX_TURNS),
-				"--output-format",
-				"stream-json",
-			];
+			sessionStartTime = Date.now();
+			abortController = new AbortController();
 
-			// Add system prompt via --system-prompt
-			args.push("--system-prompt", options.systemPrompt);
-
-			// Add settings file
-			if (options.settingsFile) {
-				args.push("--settings", options.settingsFile);
+			// Configure betas for extended context window
+			const betas: SdkBeta[] = [];
+			if (ENABLE_1M_CONTEXT) {
+				betas.push("context-1m-2025-08-07");
 			}
 
-			// Add plugin directories
-			for (const pluginDir of options.pluginDirs) {
-				args.push("--plugin-dir", pluginDir);
+			// Calculate context compression threshold
+			const contextWindow = ENABLE_1M_CONTEXT
+				? CONTEXT_WINDOW.EXTENDED_1M
+				: CONTEXT_WINDOW.DEFAULT;
+			const compressionThreshold = getCompressionThresholdTokens(
+				contextWindow,
+				CONTEXT_COMPRESSION_THRESHOLD,
+			);
+
+			console.log(
+				`[Context] Window: ${(contextWindow / 1000).toFixed(0)}K tokens, ` +
+					`Compression at: ${(compressionThreshold / 1000).toFixed(0)}K tokens ` +
+					`(${(CONTEXT_COMPRESSION_THRESHOLD * 100).toFixed(0)}%)`,
+			);
+
+			// Initialize token usage monitor
+			if (ENABLE_TOKEN_MONITORING) {
+				tokenMonitor = new TokenUsageMonitor(contextWindow);
+				console.log("[Token Monitor] Initialized - tracking token usage");
 			}
 
-			// Add MCP servers
-			for (const [name, config] of Object.entries(options.mcpServers)) {
-				const mcpArg = JSON.stringify({ [name]: config });
-				args.push("--mcp-server", mcpArg);
-			}
-
-			// Add the message as positional argument
-			args.push(message);
-
-			// Spawn claude CLI process
-			process = spawn({
-				cmd: ["claude", ...args],
+			// Build SDK options
+			const sdkOptions: SDKOptions = {
+				model: options.model,
 				cwd: options.projectDir,
+				systemPrompt: options.systemPrompt,
+				permissionMode: "bypassPermissions",
+				allowDangerouslySkipPermissions: true,
+				mcpServers: options.mcpServers,
+				allowedTools: options.allowedTools,
+				maxTurns: options.maxTurns,
 				env: options.env,
-				stdout: "pipe",
-				stderr: "pipe",
-				stdin: "ignore",
-			});
+				abortController,
+				// Enable extended context window beta
+				betas: betas.length > 0 ? betas : undefined,
+				// Load plugins from validated directories
+				plugins: options.pluginDirs.map((path) => ({
+					type: "local" as const,
+					path,
+				})),
+				// Pass compression threshold via extraArgs
+				extraArgs: {
+					"context-window-tokens": String(contextWindow),
+				},
+			};
 
-			_responseBuffer = "";
+			// Create the SDK query
+			currentQuery = query({
+				prompt: message,
+				options: sdkOptions,
+			});
 		},
 
 		async *receiveResponse(): AsyncGenerator<AgentMessage, void, unknown> {
-			if (!process) {
+			if (!currentQuery) {
 				throw new Error("No active query");
 			}
 
-			const stdout = process.stdout;
-			if (!stdout) {
-				throw new Error("No stdout available");
-			}
-
-			const decoder = new TextDecoder();
-			const reader = stdout.getReader();
-			let buffer = "";
+			let sessionId = "unknown";
+			let currentToolName: string | null = null;
 
 			try {
-				while (true) {
-					const { done, value } = await reader.read();
-					if (done) break;
+				for await (const message of currentQuery) {
+					// Convert SDK message to AgentMessage format
+					const agentMessage = convertSdkMessage(message);
 
-					buffer += decoder.decode(value, { stream: true });
-
-					// Process complete lines
-					const lines = buffer.split("\n");
-					buffer = lines.pop() ?? "";
-
-					for (const line of lines) {
-						if (!line.trim()) continue;
-
-						try {
-							const msg = JSON.parse(line);
-							yield convertToAgentMessage(msg);
-						} catch {
-							// Not JSON, might be raw output
-							yield {
-								type: "AssistantMessage",
-								content: [{ type: "TextBlock", text: line }],
-							};
+					// Track session metadata from init message
+					if (message.type === "system") {
+						const sysMsg = message as SDKSystemMessage;
+						if (sysMsg.subtype === "init") {
+							sessionId = sysMsg.session_id;
 						}
 					}
+
+					// Track tool usage for token monitoring
+					if (message.type === "assistant" && tokenMonitor) {
+						const assistantMsg = message as SDKAssistantMessage;
+						const content = assistantMsg.message?.content;
+
+						if (Array.isArray(content)) {
+							for (const block of content) {
+								if (block.type === "tool_use") {
+									const toolBlock = block as any;
+									currentToolName = toolBlock.name;
+									tokenMonitor.onToolStart(currentToolName);
+								}
+							}
+						}
+					}
+
+					// Track tool result completion
+					if (message.type === "user" && tokenMonitor && currentToolName) {
+						tokenMonitor.onToolEnd();
+						currentToolName = null;
+					}
+
+					// Handle result message (final message with usage stats)
+					if (message.type === "result") {
+						const resultMsg = message as SDKResultMessage;
+						const usage = {
+							input_tokens: resultMsg.usage?.input_tokens ?? 0,
+							output_tokens: resultMsg.usage?.output_tokens ?? 0,
+							cache_creation_input_tokens:
+								resultMsg.usage?.cache_creation_input_tokens ?? 0,
+							cache_read_input_tokens:
+								resultMsg.usage?.cache_read_input_tokens ?? 0,
+						};
+
+						// Update token monitor with final usage
+						if (tokenMonitor) {
+							tokenMonitor.updateUsage(
+								usage.input_tokens,
+								usage.output_tokens,
+							);
+							tokenMonitor.printSummary();
+						}
+
+						// Log cache statistics for cost optimization insights
+						if (ENABLE_PROMPT_CACHING) {
+							logCacheStatistics(usage);
+						}
+
+						yield {
+							type: "ResultMessage",
+							usage,
+							total_cost_usd: resultMsg.total_cost_usd ?? null,
+							duration_ms: resultMsg.duration_ms ?? Date.now() - sessionStartTime,
+							num_turns: resultMsg.num_turns ?? 0,
+							session_id: resultMsg.session_id ?? sessionId,
+						};
+						continue;
+					}
+
+					// Update token monitor from streaming usage (if available)
+					if (message.type === "stream_event" && tokenMonitor) {
+						const streamMsg = message as any;
+						if (streamMsg.event?.usage) {
+							tokenMonitor.updateUsage(
+								streamMsg.event.usage.input_tokens ?? 0,
+								streamMsg.event.usage.output_tokens ?? 0,
+							);
+						}
+					}
+
+					yield agentMessage;
+				}
+			} catch (error) {
+				// Print token summary even on error
+				if (tokenMonitor) {
+					tokenMonitor.printSummary();
 				}
 
-				// Process any remaining buffer
-				if (buffer.trim()) {
-					try {
-						const msg = JSON.parse(buffer);
-						yield convertToAgentMessage(msg);
-					} catch {
-						yield {
-							type: "AssistantMessage",
-							content: [{ type: "TextBlock", text: buffer }],
-						};
-					}
-				}
-			} finally {
-				reader.releaseLock();
+				// Yield error message
+				yield {
+					type: "ErrorMessage",
+					error: {
+						message: error instanceof Error ? error.message : String(error),
+					},
+				};
 			}
 		},
 
 		async cleanup(): Promise<void> {
-			if (process) {
-				try {
-					process.kill("SIGTERM");
-					await process.exited;
-				} catch {
-					// Ignore errors during cleanup
-				}
-				process = null;
+			// Abort the query if still running
+			if (abortController && !abortController.signal.aborted) {
+				abortController.abort();
 			}
+			currentQuery = null;
+			abortController = null;
+			tokenMonitor = null;
 		},
 
-		getProcess(): Subprocess | null {
-			return process;
+		getProcess(): null {
+			// SDK doesn't expose subprocess
+			return null;
 		},
 	};
 }
 
 /**
- * Convert claude CLI output to AgentMessage format
+ * Convert SDK message to AgentMessage format
  */
-function convertToAgentMessage(msg: any): AgentMessage {
-	// Handle different message types from claude CLI
-	if (msg.type === "assistant") {
+function convertSdkMessage(message: SDKMessage): AgentMessage {
+	const msgType = message.type;
+
+	// Handle assistant messages
+	if (msgType === "assistant") {
+		const assistantMsg = message as SDKAssistantMessage;
+		const content = assistantMsg.message?.content;
+		const messageContent: MessageContent[] = [];
+
+		if (Array.isArray(content)) {
+			for (const block of content) {
+				if (block.type === "text") {
+					messageContent.push({
+						type: "TextBlock",
+						text: (block as any).text ?? "",
+					});
+				} else if (block.type === "tool_use") {
+					const toolBlock = block as any;
+					messageContent.push({
+						type: "ToolUseBlock",
+						name: toolBlock.name,
+						input: toolBlock.input,
+					});
+				}
+			}
+		}
+
 		return {
 			type: "AssistantMessage",
-			content: [{ type: "TextBlock", text: msg.message ?? "" }],
+			content: messageContent,
+			session_id: assistantMsg.session_id,
 		};
 	}
 
-	if (msg.type === "tool_use") {
-		return {
-			type: "AssistantMessage",
-			content: [
-				{
-					type: "ToolUseBlock",
-					name: msg.tool ?? msg.name ?? "unknown",
-					input: msg.input ?? msg.arguments ?? {},
-				},
-			],
-		};
-	}
+	// Handle user messages (tool results)
+	if (msgType === "user") {
+		const userMsg = message as SDKUserMessage;
+		const content = userMsg.message?.content;
+		const messageContent: MessageContent[] = [];
 
-	if (msg.type === "tool_result") {
+		if (Array.isArray(content)) {
+			for (const block of content) {
+				if (block.type === "tool_result") {
+					const resultBlock = block as any;
+					messageContent.push({
+						type: "ToolResultBlock",
+						content:
+							typeof resultBlock.content === "string"
+								? resultBlock.content
+								: JSON.stringify(resultBlock.content ?? ""),
+						is_error: resultBlock.is_error ?? false,
+					});
+				}
+			}
+		}
+
 		return {
 			type: "UserMessage",
-			content: [
-				{
-					type: "ToolResultBlock",
-					content: msg.result ?? msg.output ?? "",
-					is_error: msg.is_error ?? false,
-				},
-			],
+			content: messageContent,
+			session_id: userMsg.session_id,
 		};
 	}
 
-	if (msg.type === "result" || msg.type === "done") {
+	// Handle system messages
+	if (msgType === "system") {
+		const sysMsg = message as SDKSystemMessage;
+		return {
+			type: "SystemMessage",
+			subtype: sysMsg.subtype,
+			session_id: sysMsg.session_id,
+		};
+	}
+
+	// Handle tool progress messages
+	if (msgType === "tool_progress") {
+		const progressMsg = message as any;
+		return {
+			type: "ToolProgressMessage",
+			tool_name: progressMsg.tool_name,
+			session_id: progressMsg.session_id,
+		};
+	}
+
+	// Handle stream events (partial messages)
+	if (msgType === "stream_event") {
+		const streamMsg = message as any;
+		const event = streamMsg.event;
+
+		// Handle content block delta (streaming text)
+		if (event?.type === "content_block_delta") {
+			const delta = event.delta;
+			if (delta?.type === "text_delta" && delta.text) {
+				return {
+					type: "AssistantMessage",
+					content: [{ type: "TextBlock", text: delta.text }],
+					session_id: streamMsg.session_id,
+				};
+			}
+		}
+
+		// Return minimal message for other stream events
+		return {
+			type: "StreamEvent",
+			subtype: event?.type,
+			session_id: streamMsg.session_id,
+		};
+	}
+
+	// Handle result messages
+	if (msgType === "result") {
+		const resultMsg = message as SDKResultMessage;
 		return {
 			type: "ResultMessage",
 			usage: {
-				input_tokens: msg.input_tokens ?? msg.usage?.input_tokens ?? 0,
-				output_tokens: msg.output_tokens ?? msg.usage?.output_tokens ?? 0,
+				input_tokens: resultMsg.usage?.input_tokens ?? 0,
+				output_tokens: resultMsg.usage?.output_tokens ?? 0,
 				cache_creation_input_tokens:
-					msg.cache_creation_tokens ??
-					msg.usage?.cache_creation_input_tokens ??
-					0,
-				cache_read_input_tokens:
-					msg.cache_read_tokens ?? msg.usage?.cache_read_input_tokens ?? 0,
+					resultMsg.usage?.cache_creation_input_tokens ?? 0,
+				cache_read_input_tokens: resultMsg.usage?.cache_read_input_tokens ?? 0,
 			},
-			total_cost_usd: msg.total_cost_usd ?? msg.cost ?? null,
-			duration_ms: msg.duration_ms ?? msg.duration ?? 0,
-			num_turns: msg.num_turns ?? msg.turns ?? 0,
-			session_id: msg.session_id ?? "unknown",
+			total_cost_usd: resultMsg.total_cost_usd ?? null,
+			duration_ms: resultMsg.duration_ms ?? 0,
+			num_turns: resultMsg.num_turns ?? 0,
+			session_id: resultMsg.session_id,
 		};
 	}
 
-	// Default: return as-is
-	return msg as AgentMessage;
+	// Default: return as-is with type info
+	return {
+		type: msgType,
+		session_id: (message as any).session_id,
+	};
 }

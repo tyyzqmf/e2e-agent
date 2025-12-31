@@ -186,10 +186,15 @@ export function copyTemplatesToProject(projectDir: string): void {
 
 /**
  * Copy the utils directory into the project directory for the agent to use.
+ * Only copies if the utils directory exists.
  *
  * @param projectDir - Target project directory
  */
 export function copyUtilsToProject(projectDir: string): void {
+	if (!existsSync(UTILS_DIR)) {
+		console.log("Utils directory not found, skipping copy");
+		return;
+	}
 	copyToProject(projectDir, UTILS_DIR, "utils", true);
 }
 
