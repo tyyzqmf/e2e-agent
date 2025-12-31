@@ -62,30 +62,15 @@ export const CONTEXT_WINDOW = {
 } as const;
 
 /**
- * Context compression threshold percentage
- * When context usage exceeds this percentage, compression is triggered
- * Set to 85% to reserve ~15% for response generation
+ * Context compression threshold percentage (display only)
+ *
+ * NOTE: The Claude Agent SDK handles compaction automatically when context
+ * usage exceeds ~85-90% of the context window. This value is only used for
+ * display purposes and token monitoring warnings.
+ *
+ * @see https://platform.claude.com/docs/en/build-with-claude/context-editing
  */
 export const CONTEXT_COMPRESSION_THRESHOLD = 0.85;
-
-/**
- * Reserved tokens for response generation (percentage)
- * This ensures enough space for the model to generate responses
- */
-export const RESPONSE_RESERVE_PERCENTAGE = 0.10;
-
-/**
- * Calculate the context compression threshold in tokens
- * @param contextWindow - Total context window size
- * @param threshold - Compression threshold percentage (default: 0.85)
- * @returns Number of tokens at which compression should trigger
- */
-export function getCompressionThresholdTokens(
-	contextWindow: number = CONTEXT_WINDOW.DEFAULT,
-	threshold: number = CONTEXT_COMPRESSION_THRESHOLD,
-): number {
-	return Math.floor(contextWindow * threshold);
-}
 
 /**
  * Whether to enable the 1M context window beta
@@ -143,7 +128,7 @@ export const ENABLE_TOKEN_MONITORING = true;
  */
 export const TOKEN_WARNING_THRESHOLDS = {
 	/** First warning level (60% of context) */
-	WARN: 0.60,
+	WARN: 0.6,
 	/** Critical warning level (75% of context) */
 	CRITICAL: 0.75,
 	/** Compression imminent (85% of context) */

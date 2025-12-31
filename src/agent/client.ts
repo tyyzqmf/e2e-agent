@@ -8,20 +8,20 @@
 
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { GetCallerIdentityCommand, STSClient } from "@aws-sdk/client-sts";
-import { fromNodeProviderChain } from "@aws-sdk/credential-providers";
 import {
-	query,
-	type Query,
-	type SDKMessage,
-	type SDKResultMessage,
-	type SDKAssistantMessage,
-	type SDKUserMessage,
-	type SDKSystemMessage,
 	type McpStdioServerConfig,
+	type Query,
+	query,
+	type SDKAssistantMessage,
+	type SDKMessage,
 	type Options as SDKOptions,
+	type SDKResultMessage,
+	type SDKSystemMessage,
+	type SDKUserMessage,
 	type SdkBeta,
 } from "@anthropic-ai/claude-agent-sdk";
+import { GetCallerIdentityCommand, STSClient } from "@aws-sdk/client-sts";
+import { fromNodeProviderChain } from "@aws-sdk/credential-providers";
 import type { ClientOptions } from "./config.ts";
 import {
 	BEDROCK_ENV_VALUES,
@@ -32,7 +32,6 @@ import {
 	ENABLE_1M_CONTEXT,
 	ENABLE_PROMPT_CACHING,
 	ENABLE_TOKEN_MONITORING,
-	getCompressionThresholdTokens,
 	MAX_TURNS,
 	MIN_CACHEABLE_TOKENS,
 	SETTINGS_FILENAME,
@@ -438,7 +437,7 @@ class TokenUsageMonitor {
 				`\n⚠️  [Token Monitor] WARNING: Context at ${(usageRatio * 100).toFixed(1)}% - ` +
 					`COMPRESSION IMMINENT!\n` +
 					`    Current: ${(this.totalInputTokens / 1000).toFixed(1)}K tokens\n` +
-					`    Threshold: ${(this.contextWindow * TOKEN_WARNING_THRESHOLDS.COMPRESSION_IMMINENT / 1000).toFixed(0)}K tokens\n`,
+					`    Threshold: ${((this.contextWindow * TOKEN_WARNING_THRESHOLDS.COMPRESSION_IMMINENT) / 1000).toFixed(0)}K tokens\n`,
 			);
 		} else if (
 			usageRatio >= TOKEN_WARNING_THRESHOLDS.CRITICAL &&
@@ -654,18 +653,17 @@ function createSdkClient(options: SdkClientOptions): ClaudeClient {
 				betas.push("context-1m-2025-08-07");
 			}
 
-			// Calculate context compression threshold
+			// Context window configuration (SDK handles compaction automatically)
 			const contextWindow = ENABLE_1M_CONTEXT
 				? CONTEXT_WINDOW.EXTENDED_1M
 				: CONTEXT_WINDOW.DEFAULT;
-			const compressionThreshold = getCompressionThresholdTokens(
-				contextWindow,
-				CONTEXT_COMPRESSION_THRESHOLD,
+			const compressionThreshold = Math.floor(
+				contextWindow * CONTEXT_COMPRESSION_THRESHOLD,
 			);
 
 			console.log(
 				`[Context] Window: ${(contextWindow / 1000).toFixed(0)}K tokens, ` +
-					`Compression at: ${(compressionThreshold / 1000).toFixed(0)}K tokens ` +
+					`Auto-compaction at: ~${(compressionThreshold / 1000).toFixed(0)}K tokens ` +
 					`(${(CONTEXT_COMPRESSION_THRESHOLD * 100).toFixed(0)}%)`,
 			);
 
@@ -694,10 +692,8 @@ function createSdkClient(options: SdkClientOptions): ClaudeClient {
 					type: "local" as const,
 					path,
 				})),
-				// Pass compression threshold via extraArgs
-				extraArgs: {
-					"context-window-tokens": String(contextWindow),
-				},
+				// NOTE: extraArgs with "context-window-tokens" causes SDK to fail
+				// The SDK doesn't support this argument - removed to fix the issue
 			};
 
 			// Create the SDK query
@@ -764,10 +760,7 @@ function createSdkClient(options: SdkClientOptions): ClaudeClient {
 
 						// Update token monitor with final usage
 						if (tokenMonitor) {
-							tokenMonitor.updateUsage(
-								usage.input_tokens,
-								usage.output_tokens,
-							);
+							tokenMonitor.updateUsage(usage.input_tokens, usage.output_tokens);
 							tokenMonitor.printSummary();
 						}
 
@@ -780,7 +773,8 @@ function createSdkClient(options: SdkClientOptions): ClaudeClient {
 							type: "ResultMessage",
 							usage,
 							total_cost_usd: resultMsg.total_cost_usd ?? null,
-							duration_ms: resultMsg.duration_ms ?? Date.now() - sessionStartTime,
+							duration_ms:
+								resultMsg.duration_ms ?? Date.now() - sessionStartTime,
 							num_turns: resultMsg.num_turns ?? 0,
 							session_id: resultMsg.session_id ?? sessionId,
 						};
@@ -899,12 +893,41 @@ function convertSdkMessage(message: SDKMessage): AgentMessage {
 		};
 	}
 
-	// Handle system messages
+	// Handle system messages (including compaction events)
 	if (msgType === "system") {
-		const sysMsg = message as SDKSystemMessage;
+		const sysMsg = message as any;
+		const subtype = sysMsg.subtype;
+
+		// Handle compact boundary message (when compaction occurs)
+		if (subtype === "compact_boundary") {
+			const compactMeta = sysMsg.compact_metadata;
+			console.log(
+				`\n[Context Compaction] Triggered: ${compactMeta?.trigger ?? "unknown"}, ` +
+					`Pre-compaction tokens: ${compactMeta?.pre_tokens ?? "unknown"}`,
+			);
+			return {
+				type: "SystemMessage",
+				subtype: "compact_boundary",
+				session_id: sysMsg.session_id,
+			};
+		}
+
+		// Handle status message (compacting status)
+		if (subtype === "status") {
+			const status = sysMsg.status;
+			if (status === "compacting") {
+				console.log("\n[Context Compaction] Compacting conversation...");
+			}
+			return {
+				type: "SystemMessage",
+				subtype: "status",
+				session_id: sysMsg.session_id,
+			};
+		}
+
 		return {
 			type: "SystemMessage",
-			subtype: sysMsg.subtype,
+			subtype,
 			session_id: sysMsg.session_id,
 		};
 	}
