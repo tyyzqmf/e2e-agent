@@ -344,17 +344,15 @@ function logCacheStatistics(usage: {
 
 /**
  * Real-time token usage monitor
- * Tracks cumulative usage and per-tool consumption
+ * Tracks cumulative context usage including cache tokens
  */
 class TokenUsageMonitor {
 	private contextWindow: number;
 	private totalInputTokens: number = 0;
 	private totalOutputTokens: number = 0;
+	private cacheReadTokens: number = 0;
+	private cacheWriteTokens: number = 0;
 	private lastLoggedTokens: number = 0;
-	private currentToolName: string | null = null;
-	private toolStartTokens: number = 0;
-	private toolUsageStats: Map<string, { calls: number; tokens: number }> =
-		new Map();
 	private warningLevel: "none" | "warn" | "critical" | "imminent" = "none";
 
 	constructor(contextWindow: number) {
@@ -362,49 +360,38 @@ class TokenUsageMonitor {
 	}
 
 	/**
-	 * Record the start of a tool call
+	 * Get effective context usage (input + cache read tokens)
+	 * Cache read tokens count toward context window usage
 	 */
-	onToolStart(toolName: string): void {
-		this.currentToolName = toolName;
-		this.toolStartTokens = this.totalInputTokens;
-	}
-
-	/**
-	 * Record the end of a tool call and calculate tokens used
-	 */
-	onToolEnd(): void {
-		if (!this.currentToolName) return;
-
-		const tokensUsed = this.totalInputTokens - this.toolStartTokens;
-		const stats = this.toolUsageStats.get(this.currentToolName) ?? {
-			calls: 0,
-			tokens: 0,
-		};
-		stats.calls++;
-		stats.tokens += tokensUsed;
-		this.toolUsageStats.set(this.currentToolName, stats);
-
-		// Log if this tool used significant tokens
-		if (tokensUsed > 5000) {
-			console.log(
-				`[Token Monitor] Tool "${this.currentToolName}" used ${tokensUsed} tokens`,
-			);
-		}
-
-		this.currentToolName = null;
+	private getEffectiveContextUsage(): number {
+		return this.totalInputTokens + this.cacheReadTokens;
 	}
 
 	/**
 	 * Update token usage from a message
+	 *
+	 * @param inputTokens - New (non-cached) input tokens
+	 * @param outputTokens - Output tokens generated
+	 * @param cacheReadTokens - Tokens read from cache (counts toward context!)
+	 * @param cacheWriteTokens - Tokens written to cache
 	 */
-	updateUsage(inputTokens: number, outputTokens: number): void {
+	updateUsage(
+		inputTokens: number,
+		outputTokens: number,
+		cacheReadTokens: number = 0,
+		cacheWriteTokens: number = 0,
+	): void {
 		this.totalInputTokens = inputTokens;
 		this.totalOutputTokens = outputTokens;
+		this.cacheReadTokens = cacheReadTokens;
+		this.cacheWriteTokens = cacheWriteTokens;
+
+		const effectiveUsage = this.getEffectiveContextUsage();
 
 		// Check if we should log (every TOKEN_LOG_INTERVAL tokens)
-		if (this.totalInputTokens - this.lastLoggedTokens >= TOKEN_LOG_INTERVAL) {
+		if (effectiveUsage - this.lastLoggedTokens >= TOKEN_LOG_INTERVAL) {
 			this.logCurrentUsage();
-			this.lastLoggedTokens = this.totalInputTokens;
+			this.lastLoggedTokens = effectiveUsage;
 		}
 
 		// Check warning thresholds
@@ -415,18 +402,26 @@ class TokenUsageMonitor {
 	 * Log current token usage
 	 */
 	private logCurrentUsage(): void {
-		const percentage = (this.totalInputTokens / this.contextWindow) * 100;
-		console.log(
-			`[Token Monitor] Usage: ${(this.totalInputTokens / 1000).toFixed(1)}K / ` +
-				`${(this.contextWindow / 1000).toFixed(0)}K tokens (${percentage.toFixed(1)}%)`,
-		);
+		// Session context = new input + cache write (what's actually in context this session)
+		const sessionInput = this.totalInputTokens + this.cacheWriteTokens;
+		const sessionPercent = (sessionInput / this.contextWindow) * 100;
+
+		let message = `[Token Monitor] Session: ${(sessionInput / 1000).toFixed(1)}K / ${(this.contextWindow / 1000).toFixed(0)}K (${sessionPercent.toFixed(1)}%)`;
+
+		if (this.cacheReadTokens > 0) {
+			message += ` | Cached: ${(this.cacheReadTokens / 1000).toFixed(1)}K`;
+		}
+
+		console.log(message);
 	}
 
 	/**
 	 * Check and emit warnings based on usage thresholds
+	 * Uses session context (new input + cache write) for meaningful warnings
 	 */
 	private checkWarningThresholds(): void {
-		const usageRatio = this.totalInputTokens / this.contextWindow;
+		const sessionInput = this.totalInputTokens + this.cacheWriteTokens;
+		const usageRatio = sessionInput / this.contextWindow;
 
 		if (
 			usageRatio >= TOKEN_WARNING_THRESHOLDS.COMPRESSION_IMMINENT &&
@@ -434,9 +429,9 @@ class TokenUsageMonitor {
 		) {
 			this.warningLevel = "imminent";
 			console.warn(
-				`\n⚠️  [Token Monitor] WARNING: Context at ${(usageRatio * 100).toFixed(1)}% - ` +
+				`\n⚠️  [Token Monitor] WARNING: Session context at ${(usageRatio * 100).toFixed(1)}% - ` +
 					`COMPRESSION IMMINENT!\n` +
-					`    Current: ${(this.totalInputTokens / 1000).toFixed(1)}K tokens\n` +
+					`    Current: ${(sessionInput / 1000).toFixed(1)}K tokens\n` +
 					`    Threshold: ${((this.contextWindow * TOKEN_WARNING_THRESHOLDS.COMPRESSION_IMMINENT) / 1000).toFixed(0)}K tokens\n`,
 			);
 		} else if (
@@ -461,47 +456,51 @@ class TokenUsageMonitor {
 	}
 
 	/**
-	 * Get summary of tool usage statistics
-	 */
-	getToolUsageSummary(): string {
-		if (this.toolUsageStats.size === 0) {
-			return "No tool usage recorded";
-		}
-
-		// Sort by tokens used (descending)
-		const sorted = [...this.toolUsageStats.entries()].sort(
-			(a, b) => b[1].tokens - a[1].tokens,
-		);
-
-		const lines = ["[Token Monitor] Tool Usage Summary (Token Killers):"];
-		for (const [tool, stats] of sorted.slice(0, 10)) {
-			// Top 10
-			const avgTokens = Math.round(stats.tokens / stats.calls);
-			lines.push(
-				`   ${tool}: ${stats.tokens} tokens (${stats.calls} calls, avg: ${avgTokens})`,
-			);
-		}
-
-		return lines.join("\n");
-	}
-
-	/**
 	 * Print final summary
 	 */
 	printSummary(): void {
+		// Session tokens (what actually counts for this session's context)
+		const sessionInputTokens = this.totalInputTokens + this.cacheWriteTokens;
+		const sessionPercent = (sessionInputTokens / this.contextWindow) * 100;
+
+		// Total tokens processed (including cached)
+		const totalProcessed = this.getEffectiveContextUsage();
+
 		console.log("\n" + "─".repeat(60));
 		console.log("[Token Monitor] Session Summary");
 		console.log("─".repeat(60));
+
+		// Show session context usage (meaningful percentage)
 		console.log(
-			`Total Input: ${(this.totalInputTokens / 1000).toFixed(1)}K tokens`,
+			`Session Context: ${(sessionInputTokens / 1000).toFixed(1)}K / ${(this.contextWindow / 1000).toFixed(0)}K tokens (${sessionPercent.toFixed(1)}%)`,
+		);
+
+		// Show cumulative cache statistics
+		if (this.cacheReadTokens > 0) {
+			console.log(
+				`Cached Context:  ${(this.cacheReadTokens / 1000).toFixed(1)}K tokens (from previous turns)`,
+			);
+		}
+
+		console.log(`\nToken Breakdown:`);
+		console.log(
+			`  New Input:     ${this.totalInputTokens.toLocaleString().padStart(12)} tokens`,
 		);
 		console.log(
-			`Total Output: ${(this.totalOutputTokens / 1000).toFixed(1)}K tokens`,
+			`  Cache Write:   ${this.cacheWriteTokens.toLocaleString().padStart(12)} tokens`,
 		);
 		console.log(
-			`Context Used: ${((this.totalInputTokens / this.contextWindow) * 100).toFixed(1)}%`,
+			`  Cache Read:    ${this.cacheReadTokens.toLocaleString().padStart(12)} tokens (90% cost savings)`,
 		);
-		console.log(this.getToolUsageSummary());
+		console.log(
+			`  Output:        ${this.totalOutputTokens.toLocaleString().padStart(12)} tokens`,
+		);
+		console.log(
+			`  ─────────────────────────────────────`,
+		);
+		console.log(
+			`  Total:         ${totalProcessed.toLocaleString().padStart(12)} tokens`,
+		);
 		console.log("─".repeat(60) + "\n");
 	}
 }
@@ -709,7 +708,6 @@ function createSdkClient(options: SdkClientOptions): ClaudeClient {
 			}
 
 			let sessionId = "unknown";
-			let currentToolName: string | null = null;
 
 			try {
 				for await (const message of currentQuery) {
@@ -724,28 +722,6 @@ function createSdkClient(options: SdkClientOptions): ClaudeClient {
 						}
 					}
 
-					// Track tool usage for token monitoring
-					if (message.type === "assistant" && tokenMonitor) {
-						const assistantMsg = message as SDKAssistantMessage;
-						const content = assistantMsg.message?.content;
-
-						if (Array.isArray(content)) {
-							for (const block of content) {
-								if (block.type === "tool_use") {
-									const toolBlock = block as any;
-									currentToolName = toolBlock.name;
-									tokenMonitor.onToolStart(currentToolName);
-								}
-							}
-						}
-					}
-
-					// Track tool result completion
-					if (message.type === "user" && tokenMonitor && currentToolName) {
-						tokenMonitor.onToolEnd();
-						currentToolName = null;
-					}
-
 					// Handle result message (final message with usage stats)
 					if (message.type === "result") {
 						const resultMsg = message as SDKResultMessage;
@@ -758,9 +734,14 @@ function createSdkClient(options: SdkClientOptions): ClaudeClient {
 								resultMsg.usage?.cache_read_input_tokens ?? 0,
 						};
 
-						// Update token monitor with final usage
+						// Update token monitor with final usage (including cache tokens)
 						if (tokenMonitor) {
-							tokenMonitor.updateUsage(usage.input_tokens, usage.output_tokens);
+							tokenMonitor.updateUsage(
+								usage.input_tokens,
+								usage.output_tokens,
+								usage.cache_read_input_tokens,
+								usage.cache_creation_input_tokens,
+							);
 							tokenMonitor.printSummary();
 						}
 
@@ -788,6 +769,8 @@ function createSdkClient(options: SdkClientOptions): ClaudeClient {
 							tokenMonitor.updateUsage(
 								streamMsg.event.usage.input_tokens ?? 0,
 								streamMsg.event.usage.output_tokens ?? 0,
+								streamMsg.event.usage.cache_read_input_tokens ?? 0,
+								streamMsg.event.usage.cache_creation_input_tokens ?? 0,
 							);
 						}
 					}
@@ -901,14 +884,39 @@ function convertSdkMessage(message: SDKMessage): AgentMessage {
 		// Handle compact boundary message (when compaction occurs)
 		if (subtype === "compact_boundary") {
 			const compactMeta = sysMsg.compact_metadata;
-			console.log(
-				`\n[Context Compaction] Triggered: ${compactMeta?.trigger ?? "unknown"}, ` +
-					`Pre-compaction tokens: ${compactMeta?.pre_tokens ?? "unknown"}`,
-			);
+			const preTokens = compactMeta?.pre_tokens;
+			const postTokens = compactMeta?.post_tokens;
+			const trigger = compactMeta?.trigger ?? "unknown";
+
+			console.log("\n" + "═".repeat(60));
+			console.log("[Context Compaction] Automatic compaction triggered");
+			console.log("═".repeat(60));
+			console.log(`  Trigger:      ${trigger}`);
+			if (preTokens !== undefined) {
+				console.log(`  Before:       ${preTokens.toLocaleString()} tokens`);
+			}
+			if (postTokens !== undefined) {
+				console.log(`  After:        ${postTokens.toLocaleString()} tokens`);
+				if (preTokens !== undefined && preTokens > 0) {
+					const reduction = ((preTokens - postTokens) / preTokens * 100).toFixed(1);
+					console.log(`  Reduction:    ${reduction}%`);
+				}
+			}
+			// Log any other metadata fields for debugging
+			if (compactMeta) {
+				const knownKeys = ["trigger", "pre_tokens", "post_tokens"];
+				const otherKeys = Object.keys(compactMeta).filter(k => !knownKeys.includes(k));
+				if (otherKeys.length > 0) {
+					console.log(`  Other info:   ${JSON.stringify(Object.fromEntries(otherKeys.map(k => [k, compactMeta[k]])))}`);
+				}
+			}
+			console.log("═".repeat(60) + "\n");
+
 			return {
 				type: "SystemMessage",
 				subtype: "compact_boundary",
 				session_id: sysMsg.session_id,
+				compact_metadata: compactMeta,
 			};
 		}
 

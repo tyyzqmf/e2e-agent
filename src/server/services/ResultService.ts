@@ -165,29 +165,50 @@ export class ResultService {
 					const data = JSON.parse(content);
 
 					// Map usage_statistics.json format to CostStatistics interface
+					// Support both camelCase (from agent) and snake_case naming
 					if (data.summary) {
+						const s = data.summary;
+						const inputTokens =
+							s.total_input_tokens ?? s.totalInputTokens ?? 0;
+						const outputTokens =
+							s.total_output_tokens ?? s.totalOutputTokens ?? 0;
+						const totalTokens = s.total_tokens ?? s.totalTokens ?? 0;
+						const totalCost = s.total_cost_usd ?? s.totalCostUsd ?? 0;
+						const sessions = s.total_sessions ?? s.totalSessions ?? 0;
+
+						// Calculate input/output costs from sessions if available
+						const inputCost =
+							data.sessions?.reduce(
+								(
+									sum: number,
+									sess: { costs?: { input_cost?: number; inputCost?: number } },
+								) =>
+									sum + (sess.costs?.input_cost ?? sess.costs?.inputCost ?? 0),
+								0,
+							) || 0;
+						const outputCost =
+							data.sessions?.reduce(
+								(
+									sum: number,
+									sess: { costs?: { output_cost?: number; outputCost?: number } },
+								) =>
+									sum +
+									(sess.costs?.output_cost ?? sess.costs?.outputCost ?? 0),
+								0,
+							) || 0;
+
 						return {
-							total_input_tokens: data.summary.total_input_tokens || 0,
-							total_output_tokens: data.summary.total_output_tokens || 0,
-							total_tokens: data.summary.total_tokens || 0,
-							estimated_cost_usd: data.summary.total_cost_usd || 0,
-							sessions: data.summary.total_sessions || 0,
+							total_input_tokens: inputTokens,
+							total_output_tokens: outputTokens,
+							total_tokens: totalTokens,
+							estimated_cost_usd: totalCost,
+							sessions: sessions,
 							// Additional fields for frontend compatibility
-							input_tokens: data.summary.total_input_tokens || 0,
-							output_tokens: data.summary.total_output_tokens || 0,
-							total_cost: data.summary.total_cost_usd || 0,
-							input_cost:
-								data.sessions?.reduce(
-									(sum: number, s: { costs?: { input_cost?: number } }) =>
-										sum + (s.costs?.input_cost || 0),
-									0,
-								) || 0,
-							output_cost:
-								data.sessions?.reduce(
-									(sum: number, s: { costs?: { output_cost?: number } }) =>
-										sum + (s.costs?.output_cost || 0),
-									0,
-								) || 0,
+							input_tokens: inputTokens,
+							output_tokens: outputTokens,
+							total_cost: totalCost,
+							input_cost: inputCost,
+							output_cost: outputCost,
 						} as CostStatistics;
 					}
 				} catch (error) {

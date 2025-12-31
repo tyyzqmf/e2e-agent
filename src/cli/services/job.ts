@@ -272,10 +272,17 @@ export class JobService {
 				jobId,
 				"generations",
 				jobId,
+				"usage_statistics.json",
+			),
+			join(this.reportsDir, jobId, "usage_statistics.json"),
+			join(
+				this.reportsDir,
+				jobId,
+				"generations",
+				jobId,
 				"cost_statistics.json",
 			),
 			join(this.reportsDir, jobId, "cost_statistics.json"),
-			join(this.reportsDir, jobId, "usage_statistics.json"),
 		];
 
 		for (const costFile of paths) {
@@ -284,12 +291,16 @@ export class JobService {
 					const data = JSON.parse(readFileSync(costFile, "utf-8"));
 
 					if (data.summary) {
+						// Support both camelCase (from agent) and snake_case naming
+						const s = data.summary;
 						return {
-							totalInputTokens: data.summary.total_input_tokens ?? 0,
-							totalOutputTokens: data.summary.total_output_tokens ?? 0,
-							totalTokens: data.summary.total_tokens ?? 0,
-							totalCost: data.summary.total_cost_usd ?? 0,
-							sessions: data.summary.total_sessions ?? 0,
+							totalInputTokens:
+								s.total_input_tokens ?? s.totalInputTokens ?? 0,
+							totalOutputTokens:
+								s.total_output_tokens ?? s.totalOutputTokens ?? 0,
+							totalTokens: s.total_tokens ?? s.totalTokens ?? 0,
+							totalCost: s.total_cost_usd ?? s.totalCostUsd ?? 0,
+							sessions: s.total_sessions ?? s.totalSessions ?? 0,
 						};
 					} else {
 						return {
