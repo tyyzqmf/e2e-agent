@@ -74,11 +74,14 @@ export class TokenUsageTracker {
 			);
 		}
 
-		// Calculate total tokens
+		// Calculate context window usage (actual tokens processed)
+		// Note: cache_creation_input_tokens is a SUBSET of input_tokens (tokens written to cache)
+		//       so we should NOT add it again to avoid double-counting
+		// Formula: Context = (input_tokens + cache_read_tokens) + output_tokens
+		//          where (input_tokens + cache_read_tokens) = total processed input
 		const totalTokens =
 			(params.tokens.inputTokens ?? 0) +
 			(params.tokens.outputTokens ?? 0) +
-			(params.tokens.cacheCreationTokens ?? 0) +
 			(params.tokens.cacheReadTokens ?? 0);
 
 		// Create session record
@@ -246,8 +249,9 @@ export class TokenUsageTracker {
 			totalOutputTokens: totalOutput,
 			totalCacheCreationTokens: totalCacheCreation,
 			totalCacheReadTokens: totalCacheRead,
-			totalTokens:
-				totalInput + totalOutput + totalCacheCreation + totalCacheRead,
+			// Context window usage = input + cache_read + output
+			// (cache_creation is subset of input, not added to avoid double-counting)
+			totalTokens: totalInput + totalOutput + totalCacheRead,
 			totalCostUsd: Math.round(totalCost * 10000) / 10000,
 			lastUpdated: new Date().toISOString(),
 		};

@@ -12,6 +12,8 @@ export enum SessionStatus {
 	CONTINUE = "continue",
 	ERROR = "error",
 	COMPLETED = "completed",
+	/** Context length exceeded - needs compaction */
+	CONTEXT_OVERFLOW = "context_overflow",
 }
 
 /**

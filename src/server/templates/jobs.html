@@ -716,7 +716,7 @@
         }
 
         // Selection functions
-        function _toggleJobSelection(jobId, isSelected) {
+        function toggleJobSelection(jobId, isSelected) {
             if (isSelected) {
                 selectedJobs.add(jobId);
             } else {
@@ -725,7 +725,7 @@
             updateBatchActionsBar();
         }
 
-        function _toggleSelectAll(checkbox) {
+        function toggleSelectAll(checkbox) {
             const allCheckboxes = document.querySelectorAll('.job-checkbox');
             allCheckboxes.forEach(cb => {
                 cb.checked = checkbox.checked;
@@ -738,7 +738,7 @@
             updateBatchActionsBar();
         }
 
-        function _clearSelection() {
+        function clearSelection() {
             selectedJobs.clear();
             const allCheckboxes = document.querySelectorAll('.job-checkbox');
             allCheckboxes.forEach(cb => cb.checked = false);
@@ -760,7 +760,7 @@
         }
 
         // Delete functions
-        async function _deleteJob(jobId) {
+        async function deleteJob(jobId) {
             if (!confirm('Are you sure you want to delete this job?')) {
                 return;
             }
@@ -783,7 +783,7 @@
             }
         }
 
-        async function _deleteSelectedJobs() {
+        async function deleteSelectedJobs() {
             if (selectedJobs.size === 0) return;
 
             const count = selectedJobs.size;

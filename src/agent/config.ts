@@ -128,33 +128,6 @@ export const CACHE_COST_MULTIPLIERS = {
 	READ: 0.1,
 } as const;
 
-// ====================================
-// Token Usage Monitoring Configuration
-// ====================================
-
-/**
- * Enable real-time token usage monitoring
- * Helps identify "token killer" tools and optimize usage
- */
-export const ENABLE_TOKEN_MONITORING = true;
-
-/**
- * Warning thresholds for token usage (percentage of context window)
- */
-export const TOKEN_WARNING_THRESHOLDS = {
-	/** First warning level (60% of context) */
-	WARN: 0.6,
-	/** Critical warning level (75% of context) */
-	CRITICAL: 0.75,
-	/** Compression imminent (85% of context) */
-	COMPRESSION_IMMINENT: 0.85,
-} as const;
-
-/**
- * Log token usage every N tokens (to avoid spam)
- */
-export const TOKEN_LOG_INTERVAL = 10000;
-
 /**
  * Default system prompt for the agent
  */
@@ -212,6 +185,8 @@ export interface ClientOptions {
 	skillContent?: string;
 	/** Whether to load default skills (default: true) */
 	loadDefaultSkills?: boolean;
+	/** Session ID to resume (for session continuity) */
+	resumeSessionId?: string;
 }
 
 /**

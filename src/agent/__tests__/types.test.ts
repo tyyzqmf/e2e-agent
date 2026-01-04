@@ -196,7 +196,9 @@ describe("Pricing Types", () => {
 				outputTokens: 500,
 				cacheCreationTokens: 100,
 				cacheReadTokens: 50,
-				totalTokens: 1650,
+				// totalTokens = input + output + cacheRead (NOT cacheCreation)
+				// cacheCreationTokens is a subset of inputTokens, not additional tokens
+				totalTokens: 1550,
 			},
 			costs: {
 				inputCost: 0.003,
@@ -208,6 +210,6 @@ describe("Pricing Types", () => {
 		};
 
 		expect(record.sessionType).toBe("test_executor");
-		expect(record.tokens.totalTokens).toBe(1650);
+		expect(record.tokens.totalTokens).toBe(1550);
 	});
 });
