@@ -32,6 +32,7 @@ import {
 	ENABLE_1M_CONTEXT,
 	ENABLE_PROMPT_CACHING,
 	ENABLE_TOKEN_MONITORING,
+	ISOLATE_SESSION_CACHE,
 	MAX_TURNS,
 	MIN_CACHEABLE_TOKENS,
 	SETTINGS_FILENAME,
@@ -263,13 +264,30 @@ function printClientConfiguration(
  * This ordering ensures maximum cache hit rate as stable
  * content is at the beginning of the prompt.
  */
+/**
+ * Generate a unique session ID for cache isolation
+ */
+function generateSessionId(): string {
+	const timestamp = Date.now();
+	const random = Math.random().toString(36).substring(2, 8);
+	return `${timestamp}-${random}`;
+}
+
 function buildSystemPrompt(options: {
 	base?: string;
 	append?: string;
 	skillContent?: string;
 }): string {
-	// Start with stable, cacheable content
 	const parts: string[] = [];
+
+	// 0. Session isolation prefix (if enabled)
+	// This MUST be at the very beginning to prevent cache hits from previous sessions
+	// Claude's prompt caching uses prefix matching, so a unique prefix = no cache hit
+	if (ISOLATE_SESSION_CACHE) {
+		const sessionId = generateSessionId();
+		parts.push(`[Session: ${sessionId}]`);
+		console.log(`[Cache Isolation] New session ID: ${sessionId}`);
+	}
 
 	// 1. Base system prompt (most stable - cache this)
 	parts.push(options.base ?? DEFAULT_SYSTEM_PROMPT);
@@ -294,9 +312,12 @@ function buildSystemPrompt(options: {
 		// Rough token estimate: ~4 chars per token
 		const estimatedTokens = Math.ceil(prompt.length / 4);
 		const cacheEligible = estimatedTokens >= MIN_CACHEABLE_TOKENS;
+		const cacheNote = ISOLATE_SESSION_CACHE
+			? " (isolated per session)"
+			: " (shared across sessions)";
 		console.log(
 			`[Prompt Cache] Size: ~${estimatedTokens} tokens, ` +
-				`Cache eligible: ${cacheEligible ? "Yes" : "No (min: " + MIN_CACHEABLE_TOKENS + ")"}`,
+				`Cache eligible: ${cacheEligible ? "Yes" : `No (min: ${MIN_CACHEABLE_TOKENS})`}${cacheNote}`,
 		);
 	}
 
@@ -352,19 +373,34 @@ class TokenUsageMonitor {
 	private totalOutputTokens: number = 0;
 	private cacheReadTokens: number = 0;
 	private cacheWriteTokens: number = 0;
-	private lastLoggedTokens: number = 0;
 	private warningLevel: "none" | "warn" | "critical" | "imminent" = "none";
+	private turnCount: number = 0;
 
 	constructor(contextWindow: number) {
 		this.contextWindow = contextWindow;
 	}
 
 	/**
-	 * Get effective context usage (input + cache read tokens)
-	 * Cache read tokens count toward context window usage
+	 * Log session start message
 	 */
-	private getEffectiveContextUsage(): number {
-		return this.totalInputTokens + this.cacheReadTokens;
+	logSessionStart(): void {
+		console.log(
+			`[Token Monitor] Session started | Context window: ${(this.contextWindow / 1000).toFixed(0)}K tokens`,
+		);
+	}
+
+	/**
+	 * Get actual context usage (input + cache write + cache read)
+	 * All these tokens are processed by the model and count toward context window
+	 *
+	 * - input_tokens: New tokens not from cache
+	 * - cache_write: New tokens written to cache (still counts as input)
+	 * - cache_read: Tokens read from cache (still processed by model!)
+	 */
+	private getActualContextUsage(): number {
+		return (
+			this.totalInputTokens + this.cacheWriteTokens + this.cacheReadTokens
+		);
 	}
 
 	/**
@@ -385,14 +421,10 @@ class TokenUsageMonitor {
 		this.totalOutputTokens = outputTokens;
 		this.cacheReadTokens = cacheReadTokens;
 		this.cacheWriteTokens = cacheWriteTokens;
+		this.turnCount++;
 
-		const effectiveUsage = this.getEffectiveContextUsage();
-
-		// Check if we should log (every TOKEN_LOG_INTERVAL tokens)
-		if (effectiveUsage - this.lastLoggedTokens >= TOKEN_LOG_INTERVAL) {
-			this.logCurrentUsage();
-			this.lastLoggedTokens = effectiveUsage;
-		}
+		// Always log token usage after each tool call / turn
+		this.logCurrentUsage();
 
 		// Check warning thresholds
 		this.checkWarningThresholds();
@@ -402,14 +434,17 @@ class TokenUsageMonitor {
 	 * Log current token usage
 	 */
 	private logCurrentUsage(): void {
-		// Session context = new input + cache write (what's actually in context this session)
-		const sessionInput = this.totalInputTokens + this.cacheWriteTokens;
-		const sessionPercent = (sessionInput / this.contextWindow) * 100;
+		// Actual context = all tokens the model processes (input + cache_write + cache_read)
+		const actualContext = this.getActualContextUsage();
+		const actualPercent = (actualContext / this.contextWindow) * 100;
 
-		let message = `[Token Monitor] Session: ${(sessionInput / 1000).toFixed(1)}K / ${(this.contextWindow / 1000).toFixed(0)}K (${sessionPercent.toFixed(1)}%)`;
+		// New tokens this turn (not from cache)
+		const newTokens = this.totalInputTokens + this.cacheWriteTokens;
+
+		let message = `[Token Monitor] Context: ${(actualContext / 1000).toFixed(1)}K / ${(this.contextWindow / 1000).toFixed(0)}K (${actualPercent.toFixed(1)}%)`;
 
 		if (this.cacheReadTokens > 0) {
-			message += ` | Cached: ${(this.cacheReadTokens / 1000).toFixed(1)}K`;
+			message += ` | New: ${(newTokens / 1000).toFixed(1)}K, Cached: ${(this.cacheReadTokens / 1000).toFixed(1)}K`;
 		}
 
 		console.log(message);
@@ -417,11 +452,11 @@ class TokenUsageMonitor {
 
 	/**
 	 * Check and emit warnings based on usage thresholds
-	 * Uses session context (new input + cache write) for meaningful warnings
+	 * Uses actual context (input + cache_write + cache_read) for accurate warnings
 	 */
 	private checkWarningThresholds(): void {
-		const sessionInput = this.totalInputTokens + this.cacheWriteTokens;
-		const usageRatio = sessionInput / this.contextWindow;
+		const actualContext = this.getActualContextUsage();
+		const usageRatio = actualContext / this.contextWindow;
 
 		if (
 			usageRatio >= TOKEN_WARNING_THRESHOLDS.COMPRESSION_IMMINENT &&
@@ -429,10 +464,11 @@ class TokenUsageMonitor {
 		) {
 			this.warningLevel = "imminent";
 			console.warn(
-				`\n⚠️  [Token Monitor] WARNING: Session context at ${(usageRatio * 100).toFixed(1)}% - ` +
+				`\n⚠️  [Token Monitor] WARNING: Context at ${(usageRatio * 100).toFixed(1)}% - ` +
 					`COMPRESSION IMMINENT!\n` +
-					`    Current: ${(sessionInput / 1000).toFixed(1)}K tokens\n` +
-					`    Threshold: ${((this.contextWindow * TOKEN_WARNING_THRESHOLDS.COMPRESSION_IMMINENT) / 1000).toFixed(0)}K tokens\n`,
+					`    Current: ${(actualContext / 1000).toFixed(1)}K tokens\n` +
+					`    Threshold: ${((this.contextWindow * TOKEN_WARNING_THRESHOLDS.COMPRESSION_IMMINENT) / 1000).toFixed(0)}K tokens\n` +
+					`    (Cache Read: ${(this.cacheReadTokens / 1000).toFixed(1)}K)\n`,
 			);
 		} else if (
 			usageRatio >= TOKEN_WARNING_THRESHOLDS.CRITICAL &&
@@ -459,26 +495,29 @@ class TokenUsageMonitor {
 	 * Print final summary
 	 */
 	printSummary(): void {
-		// Session tokens (what actually counts for this session's context)
-		const sessionInputTokens = this.totalInputTokens + this.cacheWriteTokens;
-		const sessionPercent = (sessionInputTokens / this.contextWindow) * 100;
+		// Actual context = all tokens processed by model
+		const actualContext = this.getActualContextUsage();
+		const actualPercent = (actualContext / this.contextWindow) * 100;
 
-		// Total tokens processed (including cached)
-		const totalProcessed = this.getEffectiveContextUsage();
+		// New tokens (not from cache)
+		const newTokens = this.totalInputTokens + this.cacheWriteTokens;
 
 		console.log("\n" + "─".repeat(60));
 		console.log("[Token Monitor] Session Summary");
 		console.log("─".repeat(60));
 
-		// Show session context usage (meaningful percentage)
+		// Show actual context usage (this is what matters for "Input is too long" errors)
 		console.log(
-			`Session Context: ${(sessionInputTokens / 1000).toFixed(1)}K / ${(this.contextWindow / 1000).toFixed(0)}K tokens (${sessionPercent.toFixed(1)}%)`,
+			`Actual Context:  ${(actualContext / 1000).toFixed(1)}K / ${(this.contextWindow / 1000).toFixed(0)}K tokens (${actualPercent.toFixed(1)}%)`,
 		);
 
-		// Show cumulative cache statistics
+		// Show breakdown
+		console.log(
+			`  New Tokens:    ${(newTokens / 1000).toFixed(1)}K (input: ${(this.totalInputTokens / 1000).toFixed(1)}K + cache_write: ${(this.cacheWriteTokens / 1000).toFixed(1)}K)`,
+		);
 		if (this.cacheReadTokens > 0) {
 			console.log(
-				`Cached Context:  ${(this.cacheReadTokens / 1000).toFixed(1)}K tokens (from previous turns)`,
+				`  Cache Read:    ${(this.cacheReadTokens / 1000).toFixed(1)}K (from prompt cache, still counts toward context!)`,
 			);
 		}
 
@@ -490,16 +529,14 @@ class TokenUsageMonitor {
 			`  Cache Write:   ${this.cacheWriteTokens.toLocaleString().padStart(12)} tokens`,
 		);
 		console.log(
-			`  Cache Read:    ${this.cacheReadTokens.toLocaleString().padStart(12)} tokens (90% cost savings)`,
+			`  Cache Read:    ${this.cacheReadTokens.toLocaleString().padStart(12)} tokens (counts toward context!)`,
 		);
 		console.log(
 			`  Output:        ${this.totalOutputTokens.toLocaleString().padStart(12)} tokens`,
 		);
+		console.log(`  ${"─".repeat(37)}`);
 		console.log(
-			`  ─────────────────────────────────────`,
-		);
-		console.log(
-			`  Total:         ${totalProcessed.toLocaleString().padStart(12)} tokens`,
+			`  Total Input:   ${actualContext.toLocaleString().padStart(12)} tokens`,
 		);
 		console.log("─".repeat(60) + "\n");
 	}
@@ -669,7 +706,7 @@ function createSdkClient(options: SdkClientOptions): ClaudeClient {
 			// Initialize token usage monitor
 			if (ENABLE_TOKEN_MONITORING) {
 				tokenMonitor = new TokenUsageMonitor(contextWindow);
-				console.log("[Token Monitor] Initialized - tracking token usage");
+				tokenMonitor.logSessionStart();
 			}
 
 			// Build SDK options

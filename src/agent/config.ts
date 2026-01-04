@@ -89,6 +89,21 @@ export const ENABLE_1M_CONTEXT = false;
 export const ENABLE_PROMPT_CACHING = true;
 
 /**
+ * Isolate cache per session to prevent cross-session cache accumulation
+ *
+ * When enabled, adds a unique session ID to the system prompt prefix,
+ * ensuring each session starts with a fresh cache and avoiding the
+ * "Input is too long" error caused by accumulated cache_read tokens.
+ *
+ * Trade-off:
+ * - Enabled (true): Prevents context overflow, but loses cache cost savings between sessions
+ * - Disabled (false): Better cost efficiency within 5-min TTL, but risks context overflow
+ *
+ * Recommended: Enable for long-running multi-session tasks
+ */
+export const ISOLATE_SESSION_CACHE = true;
+
+/**
  * Minimum tokens required for caching (Anthropic requirement)
  * System prompt must be at least this many tokens to benefit from caching
  */
