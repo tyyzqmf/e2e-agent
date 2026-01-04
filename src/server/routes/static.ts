@@ -6,6 +6,7 @@
 
 import { join } from "node:path";
 import { config } from "../config.ts";
+import type { RequestWithParams } from "../types/index.ts";
 import { logger } from "../utils/logger.ts";
 
 /**
@@ -84,7 +85,7 @@ export function buildStaticRoutes() {
 		 */
 		"GET /status/:id": async (req: Request) => {
 			// Extract job_id from the request params
-			const params = (req as any).params || {};
+			const params = (req as RequestWithParams).params || {};
 			const jobId = params.id || "";
 
 			// Validate UUID format to prevent XSS attacks

@@ -6,6 +6,7 @@
 
 import { beforeAll, describe, expect, it } from "bun:test";
 import { buildStaticRoutes, notFoundHandler } from "../routes/static.ts";
+import type { RequestWithParams } from "../types/index.ts";
 
 describe("Static Routes", () => {
 	let routes: ReturnType<typeof buildStaticRoutes>;
@@ -69,7 +70,7 @@ describe("Static Routes", () => {
 			// Use valid UUID format (required by the handler)
 			const validUuid = "12345678-1234-4abc-8def-123456789012";
 			const req = new Request(`http://localhost/status/${validUuid}`);
-			(req as any).params = { id: validUuid };
+			(req as RequestWithParams).params = { id: validUuid };
 
 			const response = await handler(req);
 
@@ -81,7 +82,7 @@ describe("Static Routes", () => {
 			// Use valid UUID format (required by the handler)
 			const validUuid = "12345678-1234-4123-8123-123456789abc";
 			const req = new Request(`http://localhost/status/${validUuid}`);
-			(req as any).params = { id: validUuid };
+			(req as RequestWithParams).params = { id: validUuid };
 
 			const response = await handler(req);
 
@@ -224,7 +225,7 @@ describe("Template Variable Substitution", () => {
 		// Use valid UUID format (required by the handler)
 		const jobId = "abc12345-1234-4567-8901-123456789abc";
 		const req = new Request(`http://localhost/status/${jobId}`);
-		(req as any).params = { id: jobId };
+		(req as RequestWithParams).params = { id: jobId };
 
 		const response = await handler(req);
 
@@ -328,7 +329,7 @@ describe("Template Serving", () => {
 		// Use valid UUID format (required by the handler)
 		const jobId = "12345678-1234-4567-8901-abcdef123456";
 		const req = new Request(`http://localhost/status/${jobId}`);
-		(req as any).params = { id: jobId };
+		(req as RequestWithParams).params = { id: jobId };
 
 		const response = await handler(req);
 

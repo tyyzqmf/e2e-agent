@@ -98,7 +98,7 @@ describe("JobService", () => {
 			const jobId = jobService.submitJob(specFile);
 			expect(jobId).not.toBeNull();
 
-			const job = jobService.getJob(jobId!);
+			const job = jobService.getJob(jobId as string);
 			expect(job).not.toBeNull();
 			expect(job?.jobId).toBe(jobId);
 			expect(job?.status).toBe("queued");
@@ -142,7 +142,7 @@ describe("JobService", () => {
 			writeFileSync(specFile, "Test specification for queued status test");
 
 			const jobId = jobService.submitJob(specFile);
-			const job = jobService.getJob(jobId!);
+			const job = jobService.getJob(jobId as string);
 
 			expect(job?.status).toBe("queued");
 			expect(job?.startedAt).toBeNull();
@@ -170,7 +170,7 @@ describe("JobService", () => {
 			const specFile = join(tempDir, "cancel_spec.txt");
 			writeFileSync(specFile, "Test specification for cancel job test");
 
-			const jobId = jobService.submitJob(specFile)!;
+			const jobId = jobService.submitJob(specFile) as string;
 			const result = jobService.cancelJob(jobId);
 
 			expect(result.success).toBe(true);
@@ -184,7 +184,7 @@ describe("JobService", () => {
 			const specFile = join(tempDir, "double_cancel_spec.txt");
 			writeFileSync(specFile, "Test specification for double cancel test");
 
-			const jobId = jobService.submitJob(specFile)!;
+			const jobId = jobService.submitJob(specFile) as string;
 			jobService.cancelJob(jobId);
 
 			const result = jobService.cancelJob(jobId);
@@ -196,7 +196,7 @@ describe("JobService", () => {
 			const specFile = join(tempDir, "completed_cancel_spec.txt");
 			writeFileSync(specFile, "Test specification for completed cancel test");
 
-			const jobId = jobService.submitJob(specFile)!;
+			const jobId = jobService.submitJob(specFile) as string;
 			jobService.updateJobStatus(jobId, "completed");
 
 			const result = jobService.cancelJob(jobId);
@@ -207,7 +207,7 @@ describe("JobService", () => {
 			const specFile = join(tempDir, "running_cancel_spec.txt");
 			writeFileSync(specFile, "Test specification for running cancel test");
 
-			const jobId = jobService.submitJob(specFile)!;
+			const jobId = jobService.submitJob(specFile) as string;
 			jobService.updateJobStatus(jobId, "running");
 
 			const result = jobService.cancelJob(jobId);
@@ -255,7 +255,7 @@ describe("JobService", () => {
 			const specFile = join(tempDir, "running_status_spec.txt");
 			writeFileSync(specFile, "Test specification for running status test");
 
-			const jobId = jobService.submitJob(specFile)!;
+			const jobId = jobService.submitJob(specFile) as string;
 			jobService.updateJobStatus(jobId, "running");
 
 			const job = jobService.getJob(jobId);
@@ -267,7 +267,7 @@ describe("JobService", () => {
 			const specFile = join(tempDir, "completed_status_spec.txt");
 			writeFileSync(specFile, "Test specification for completed status test");
 
-			const jobId = jobService.submitJob(specFile)!;
+			const jobId = jobService.submitJob(specFile) as string;
 			jobService.updateJobStatus(jobId, "completed");
 
 			const job = jobService.getJob(jobId);
@@ -279,7 +279,7 @@ describe("JobService", () => {
 			const specFile = join(tempDir, "failed_status_spec.txt");
 			writeFileSync(specFile, "Test specification for failed status test");
 
-			const jobId = jobService.submitJob(specFile)!;
+			const jobId = jobService.submitJob(specFile) as string;
 			jobService.updateJobStatus(jobId, "failed", "Test error message");
 
 			const job = jobService.getJob(jobId);
@@ -293,7 +293,7 @@ describe("JobService", () => {
 			const specFile = join(tempDir, "pid_spec.txt");
 			writeFileSync(specFile, "Test specification for PID test");
 
-			const jobId = jobService.submitJob(specFile)!;
+			const jobId = jobService.submitJob(specFile) as string;
 			jobService.setProcessPid(jobId, 12345);
 
 			const job = jobService.getJob(jobId);
@@ -306,7 +306,7 @@ describe("JobService", () => {
 			const specFile = join(tempDir, "stop_req_spec.txt");
 			writeFileSync(specFile, "Test specification for stop request test");
 
-			const jobId = jobService.submitJob(specFile)!;
+			const jobId = jobService.submitJob(specFile) as string;
 			expect(jobService.isStopRequested(jobId)).toBe(false);
 		});
 
@@ -326,7 +326,7 @@ describe("JobService", () => {
 			const specFile = join(tempDir, "delete_spec.txt");
 			writeFileSync(specFile, "Test specification for delete job test");
 
-			const jobId = jobService.submitJob(specFile)!;
+			const jobId = jobService.submitJob(specFile) as string;
 			const result = jobService.deleteJob(jobId);
 
 			expect(result.success).toBe(true);
@@ -337,7 +337,7 @@ describe("JobService", () => {
 			const specFile = join(tempDir, "delete_running_spec.txt");
 			writeFileSync(specFile, "Test specification for delete running job test");
 
-			const jobId = jobService.submitJob(specFile)!;
+			const jobId = jobService.submitJob(specFile) as string;
 			jobService.updateJobStatus(jobId, "running");
 
 			const result = jobService.deleteJob(jobId);
@@ -352,7 +352,7 @@ describe("JobService", () => {
 				"Test specification for delete completed job test",
 			);
 
-			const jobId = jobService.submitJob(specFile)!;
+			const jobId = jobService.submitJob(specFile) as string;
 			jobService.updateJobStatus(jobId, "completed");
 
 			const result = jobService.deleteJob(jobId);
@@ -365,8 +365,8 @@ describe("JobService", () => {
 			const specFile = join(tempDir, "batch_delete_spec.txt");
 			writeFileSync(specFile, "Test specification for batch delete test");
 
-			const jobId1 = jobService.submitJob(specFile)!;
-			const jobId2 = jobService.submitJob(specFile)!;
+			const jobId1 = jobService.submitJob(specFile) as string;
+			const jobId2 = jobService.submitJob(specFile) as string;
 
 			const result = jobService.deleteJobs([jobId1, jobId2]);
 
@@ -382,8 +382,8 @@ describe("JobService", () => {
 				"Test specification for partial batch delete test",
 			);
 
-			const jobId1 = jobService.submitJob(specFile)!;
-			const jobId2 = jobService.submitJob(specFile)!;
+			const jobId1 = jobService.submitJob(specFile) as string;
+			const jobId2 = jobService.submitJob(specFile) as string;
 			jobService.updateJobStatus(jobId2, "running");
 
 			const result = jobService.deleteJobs([jobId1, jobId2]);
@@ -399,7 +399,7 @@ describe("JobService", () => {
 			const specFile = join(tempDir, "cost_spec.txt");
 			writeFileSync(specFile, "Test specification for cost statistics test");
 
-			const jobId = jobService.submitJob(specFile)!;
+			const jobId = jobService.submitJob(specFile) as string;
 			const cost = jobService.getCostStatistics(jobId);
 
 			expect(cost).toBeNull();
@@ -409,7 +409,7 @@ describe("JobService", () => {
 			const specFile = join(tempDir, "usage_stats_spec.txt");
 			writeFileSync(specFile, "Test specification for usage statistics test");
 
-			const jobId = jobService.submitJob(specFile)!;
+			const jobId = jobService.submitJob(specFile) as string;
 
 			// Create usage_statistics.json
 			const reportDir = join(tempDir, "reports", jobId);
@@ -439,7 +439,7 @@ describe("JobService", () => {
 			const specFile = join(tempDir, "legacy_cost_spec.txt");
 			writeFileSync(specFile, "Test specification for legacy cost format test");
 
-			const jobId = jobService.submitJob(specFile)!;
+			const jobId = jobService.submitJob(specFile) as string;
 
 			// Create cost_statistics.json (legacy format)
 			const reportDir = join(tempDir, "reports", jobId);
@@ -467,7 +467,7 @@ describe("JobService", () => {
 			const specFile = join(tempDir, "test_cases_spec.txt");
 			writeFileSync(specFile, "Test specification for test cases test");
 
-			const jobId = jobService.submitJob(specFile)!;
+			const jobId = jobService.submitJob(specFile) as string;
 			const testCases = jobService.getTestCases(jobId);
 
 			expect(testCases).toBeNull();
@@ -477,7 +477,7 @@ describe("JobService", () => {
 			const specFile = join(tempDir, "read_test_cases_spec.txt");
 			writeFileSync(specFile, "Test specification for reading test cases");
 
-			const jobId = jobService.submitJob(specFile)!;
+			const jobId = jobService.submitJob(specFile) as string;
 
 			// Create test_cases.json
 			const reportDir = join(tempDir, "reports", jobId);
@@ -514,7 +514,7 @@ describe("JobService", () => {
 			const specFile = join(tempDir, "array_test_cases_spec.txt");
 			writeFileSync(specFile, "Test specification for array format test cases");
 
-			const jobId = jobService.submitJob(specFile)!;
+			const jobId = jobService.submitJob(specFile) as string;
 
 			// Create test_cases.json as array
 			const reportDir = join(tempDir, "reports", jobId);
@@ -539,7 +539,7 @@ describe("JobService", () => {
 			const specFile = join(tempDir, "log_path_spec.txt");
 			writeFileSync(specFile, "Test specification for log path test");
 
-			const jobId = jobService.submitJob(specFile)!;
+			const jobId = jobService.submitJob(specFile) as string;
 			const logPath = jobService.getLogPath(jobId);
 
 			expect(logPath).toBeNull();
@@ -549,7 +549,7 @@ describe("JobService", () => {
 			const specFile = join(tempDir, "log_exists_spec.txt");
 			writeFileSync(specFile, "Test specification for log exists test");
 
-			const jobId = jobService.submitJob(specFile)!;
+			const jobId = jobService.submitJob(specFile) as string;
 
 			// Create log file
 			const reportDir = join(tempDir, "reports", jobId);
@@ -571,7 +571,7 @@ describe("JobService", () => {
 			const specFile = join(tempDir, "log_content_spec.txt");
 			writeFileSync(specFile, "Test specification for log content test");
 
-			const jobId = jobService.submitJob(specFile)!;
+			const jobId = jobService.submitJob(specFile) as string;
 			const content = jobService.getLogContent(jobId);
 
 			expect(content).toBeNull();
@@ -581,7 +581,7 @@ describe("JobService", () => {
 			const specFile = join(tempDir, "full_log_spec.txt");
 			writeFileSync(specFile, "Test specification for full log test");
 
-			const jobId = jobService.submitJob(specFile)!;
+			const jobId = jobService.submitJob(specFile) as string;
 
 			// Create log file
 			const reportDir = join(tempDir, "reports", jobId);
@@ -602,7 +602,7 @@ describe("JobService", () => {
 			const specFile = join(tempDir, "tail_log_spec.txt");
 			writeFileSync(specFile, "Test specification for tail log test");
 
-			const jobId = jobService.submitJob(specFile)!;
+			const jobId = jobService.submitJob(specFile) as string;
 
 			// Create log file
 			const reportDir = join(tempDir, "reports", jobId);
@@ -639,7 +639,7 @@ describe("JobService", () => {
 			mkdirSync(freshDir, { recursive: true });
 			writeFileSync(specFile, "Test specification for orphan recovery test");
 
-			const jobId = freshService.submitJob(specFile)!;
+			const jobId = freshService.submitJob(specFile) as string;
 			freshService.updateJobStatus(jobId, "running");
 			freshService.setProcessPid(jobId, 999999); // Non-existent PID
 

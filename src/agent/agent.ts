@@ -9,15 +9,15 @@
 import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import {
-	query,
 	type Query,
+	query,
 	type SDKAssistantMessage,
-	type SDKUserMessage,
+	type SDKCompactBoundaryMessage,
+	type Options as SDKOptions,
 	type SDKResultMessage,
 	type SDKSystemMessage,
-	type SDKCompactBoundaryMessage,
 	type SDKToolProgressMessage,
-	type Options as SDKOptions,
+	type SDKUserMessage,
 } from "@anthropic-ai/claude-agent-sdk";
 import type { AgentOptions } from "./config.ts";
 import {
@@ -26,6 +26,7 @@ import {
 	DEFAULT_MODEL,
 	ENABLE_1M_CONTEXT,
 } from "./config.ts";
+import { createSdkOptions } from "./sdk-utils.ts";
 import {
 	CostReportGenerator,
 	getTestExecutorPrompt,
@@ -43,7 +44,6 @@ import {
 	SessionStatus,
 	type UsageData,
 } from "./types/index.ts";
-import { createSdkOptions } from "./sdk-utils.ts";
 
 // ====================================
 // Utility Functions
@@ -166,14 +166,16 @@ function formatToolResultOutput(
 		executionTime !== undefined ? ` (took ${executionTime.toFixed(1)}s)` : "";
 
 	if (resultContent.toLowerCase().includes("blocked")) {
-		const truncated = resultContent.length > maxLen
-			? resultContent.slice(0, maxLen) + "..."
-			: resultContent;
+		const truncated =
+			resultContent.length > maxLen
+				? `${resultContent.slice(0, maxLen)}...`
+				: resultContent;
 		console.log(`   [BLOCKED]${timeSuffix} ${truncated}`);
 	} else if (isError) {
-		const truncated = resultContent.length > maxLen
-			? resultContent.slice(0, maxLen) + "..."
-			: resultContent;
+		const truncated =
+			resultContent.length > maxLen
+				? `${resultContent.slice(0, maxLen)}...`
+				: resultContent;
 		console.log(`   [Error]${timeSuffix} ${truncated}`);
 	} else {
 		console.log(`   [Done]${timeSuffix}`);
@@ -200,9 +202,6 @@ function handleAssistantMessage(
 
 	for (const block of content) {
 		if (block.type === "thinking") {
-			// Thinking blocks contain Claude's reasoning (extended thinking)
-			// We skip displaying these as they can be very long
-			continue;
 		} else if (block.type === "text") {
 			const textBlock = block as { type: "text"; text: string };
 			text += textBlock.text;
@@ -285,12 +284,14 @@ function handleUserMessage(
  */
 function handleCompactBoundary(msg: SDKCompactBoundaryMessage): void {
 	const metadata = msg.compact_metadata;
-	console.log("\n" + "═".repeat(60));
+	console.log(`\n${"═".repeat(60)}`);
 	console.log("[Context Compaction] Automatic compaction triggered");
 	console.log("═".repeat(60));
 	console.log(`  Trigger: ${metadata.trigger}`);
-	console.log(`  Pre-compaction tokens: ${metadata.pre_tokens.toLocaleString()}`);
-	console.log("═".repeat(60) + "\n");
+	console.log(
+		`  Pre-compaction tokens: ${metadata.pre_tokens.toLocaleString()}`,
+	);
+	console.log(`${"═".repeat(60)}\n`);
 }
 
 // ====================================
@@ -327,10 +328,10 @@ async function runAgentSession(
 
 	// Track state
 	let responseText = "";
-	let lastEventTime = { value: Date.now() };
+	const lastEventTime = { value: Date.now() };
 	let toolStartTime: number | null = null;
 	let usageData: UsageData | null = null;
-	let sessionId: string | undefined = undefined;
+	let sessionId: string | undefined;
 	let errorOccurred = false;
 	let errorMessage = "";
 
@@ -402,7 +403,12 @@ async function runAgentSession(
 			// Handle user messages (tool results)
 			else if (msgType === "user") {
 				const userMsg = msg as SDKUserMessage;
-				handleUserMessage(userMsg, toolStartTime, lastEventTime, contextTracker);
+				handleUserMessage(
+					userMsg,
+					toolStartTime,
+					lastEventTime,
+					contextTracker,
+				);
 				toolStartTime = null;
 			}
 
@@ -413,8 +419,7 @@ async function runAgentSession(
 					// Calculate context window usage
 					// Total processed input = input_tokens (new/uncached) + cache_read_input_tokens (cached)
 					const inputTokens = resultMsg.usage.input_tokens ?? 0;
-					const cacheReadTokens =
-						resultMsg.usage.cache_read_input_tokens ?? 0;
+					const cacheReadTokens = resultMsg.usage.cache_read_input_tokens ?? 0;
 					const outputTokens = resultMsg.usage.output_tokens ?? 0;
 					const totalProcessedInput = inputTokens + cacheReadTokens;
 					const contextUsage = totalProcessedInput + outputTokens;
@@ -580,7 +585,7 @@ export async function runAutonomousTestingAgent(
 	const progressTracker = new ProgressTracker(projectDir);
 
 	// Session tracking for resume capability
-	let currentSessionId: string | undefined = undefined;
+	let currentSessionId: string | undefined;
 
 	// Main loop
 	let iteration = 0;
@@ -628,7 +633,7 @@ export async function runAutonomousTestingAgent(
 			abortController,
 		);
 
-		const { status, responseText, usageData } = result;
+		const { status, usageData } = result;
 
 		// Capture session ID only on success
 		if (status === SessionStatus.CONTINUE && sessionId) {
@@ -637,7 +642,9 @@ export async function runAutonomousTestingAgent(
 				`[Session] Session ID captured for resume: ${currentSessionId.slice(0, 16)}...`,
 			);
 		} else {
-			console.log(`[Session] Skipping session ID capture due to status: ${status}`);
+			console.log(
+				`[Session] Skipping session ID capture due to status: ${status}`,
+			);
 		}
 
 		// Give processes time to terminate gracefully

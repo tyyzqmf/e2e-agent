@@ -294,8 +294,7 @@ export class JobService {
 						// Support both camelCase (from agent) and snake_case naming
 						const s = data.summary;
 						return {
-							totalInputTokens:
-								s.total_input_tokens ?? s.totalInputTokens ?? 0,
+							totalInputTokens: s.total_input_tokens ?? s.totalInputTokens ?? 0,
 							totalOutputTokens:
 								s.total_output_tokens ?? s.totalOutputTokens ?? 0,
 							totalTokens: s.total_tokens ?? s.totalTokens ?? 0,

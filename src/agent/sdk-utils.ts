@@ -116,7 +116,9 @@ async function validateAwsCredentials(): Promise<void> {
  */
 export async function configureAuthentication(): Promise<AuthConfig> {
 	const useBedrock = BEDROCK_ENV_VALUES.includes(
-		(process.env.USE_AWS_BEDROCK ?? "").toLowerCase() as any,
+		(
+			process.env.USE_AWS_BEDROCK ?? ""
+		).toLowerCase() as (typeof BEDROCK_ENV_VALUES)[number],
 	);
 
 	if (useBedrock) {
@@ -366,7 +368,9 @@ export async function createSdkOptions(
 
 	// Log session mode
 	if (resumeSessionId) {
-		console.log(`[Session] Resuming session: ${resumeSessionId.slice(0, 16)}...`);
+		console.log(
+			`[Session] Resuming session: ${resumeSessionId.slice(0, 16)}...`,
+		);
 	} else {
 		console.log("[Session] Starting new session");
 	}

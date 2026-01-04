@@ -168,8 +168,7 @@ export class ResultService {
 					// Support both camelCase (from agent) and snake_case naming
 					if (data.summary) {
 						const s = data.summary;
-						const inputTokens =
-							s.total_input_tokens ?? s.totalInputTokens ?? 0;
+						const inputTokens = s.total_input_tokens ?? s.totalInputTokens ?? 0;
 						const outputTokens =
 							s.total_output_tokens ?? s.totalOutputTokens ?? 0;
 						const totalTokens = s.total_tokens ?? s.totalTokens ?? 0;
@@ -190,7 +189,9 @@ export class ResultService {
 							data.sessions?.reduce(
 								(
 									sum: number,
-									sess: { costs?: { output_cost?: number; outputCost?: number } },
+									sess: {
+										costs?: { output_cost?: number; outputCost?: number };
+									},
 								) =>
 									sum +
 									(sess.costs?.output_cost ?? sess.costs?.outputCost ?? 0),

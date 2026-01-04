@@ -479,7 +479,8 @@ describe("Token Usage Service", () => {
 		const tracker = new TokenUsageTracker(testDir);
 		const consoleLogs: string[] = [];
 		const originalLog = console.log;
-		console.log = (...args: any[]) => consoleLogs.push(args.join(" "));
+		console.log = (...args: unknown[]) =>
+			consoleLogs.push(args.map(String).join(" "));
 
 		const record = tracker.recordSession({
 			sessionId: "session-1",
@@ -732,7 +733,7 @@ describe("Progress Service - Extended", () => {
 	test("printTestSessionHeader outputs correct format for planner", () => {
 		const logs: string[] = [];
 		const originalLog = console.log;
-		console.log = (...args: any[]) => logs.push(args.join(" "));
+		console.log = (...args: unknown[]) => logs.push(args.map(String).join(" "));
 
 		printTestSessionHeader(1, true);
 
@@ -745,7 +746,7 @@ describe("Progress Service - Extended", () => {
 	test("printTestSessionHeader outputs correct format for executor", () => {
 		const logs: string[] = [];
 		const originalLog = console.log;
-		console.log = (...args: any[]) => logs.push(args.join(" "));
+		console.log = (...args: unknown[]) => logs.push(args.map(String).join(" "));
 
 		printTestSessionHeader(2, false);
 
@@ -769,7 +770,7 @@ describe("Progress Service - Extended", () => {
 
 		const logs: string[] = [];
 		const originalLog = console.log;
-		console.log = (...args: any[]) => logs.push(args.join(" "));
+		console.log = (...args: unknown[]) => logs.push(args.map(String).join(" "));
 
 		await printTestProgressSummary(progressTestDir);
 
@@ -784,7 +785,7 @@ describe("Progress Service - Extended", () => {
 	test("printTestProgressSummary shows message when no test cases", async () => {
 		const logs: string[] = [];
 		const originalLog = console.log;
-		console.log = (...args: any[]) => logs.push(args.join(" "));
+		console.log = (...args: unknown[]) => logs.push(args.map(String).join(" "));
 
 		await printTestProgressSummary(progressTestDir);
 
@@ -813,7 +814,7 @@ describe("Progress Service - Extended", () => {
 
 		const logs: string[] = [];
 		const originalLog = console.log;
-		console.log = (...args: any[]) => logs.push(args.join(" "));
+		console.log = (...args: unknown[]) => logs.push(args.map(String).join(" "));
 
 		await printTestProgressSummary(progressTestDir);
 
@@ -828,7 +829,7 @@ describe("Progress Service - Extended", () => {
 		const tracker = new ProgressTracker(progressTestDir);
 		const logs: string[] = [];
 		const originalLog = console.log;
-		console.log = (...args: any[]) => logs.push(args.join(" "));
+		console.log = (...args: unknown[]) => logs.push(args.map(String).join(" "));
 
 		tracker.printSessionHeader(1, true);
 
@@ -841,7 +842,7 @@ describe("Progress Service - Extended", () => {
 		const tracker = new ProgressTracker(progressTestDir);
 		const logs: string[] = [];
 		const originalLog = console.log;
-		console.log = (...args: any[]) => logs.push(args.join(" "));
+		console.log = (...args: unknown[]) => logs.push(args.map(String).join(" "));
 
 		await tracker.printSummary();
 
@@ -996,8 +997,8 @@ describe("Pricing Service - Extended", () => {
 
 		const costs = calculator.calculateCost(
 			{
-				inputTokens: undefined as any,
-				outputTokens: undefined as any,
+				inputTokens: undefined as unknown as number,
+				outputTokens: undefined as unknown as number,
 			},
 			"claude-sonnet-4-5-20250929",
 		);
@@ -1248,7 +1249,8 @@ describe("Token Usage Service - Extended", () => {
 
 		const logs: string[] = [];
 		const originalWarn = console.warn;
-		console.warn = (...args: any[]) => logs.push(args.join(" "));
+		console.warn = (...args: unknown[]) =>
+			logs.push(args.map(String).join(" "));
 
 		// Should load with fresh data despite corrupted file
 		const tracker = new TokenUsageTracker(tokenTestDir);

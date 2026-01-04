@@ -161,7 +161,7 @@ describe("Skills Configuration", () => {
 	test("collectPluginDirectories warns about missing default skills", () => {
 		const logs: string[] = [];
 		const originalLog = console.log;
-		console.log = (...args: any[]) => logs.push(args.join(" "));
+		console.log = (...args: unknown[]) => logs.push(args.map(String).join(" "));
 
 		// Call with loadDefaultSkills=true but custom plugins dir with no skills
 		const result = collectPluginDirectories({
@@ -179,7 +179,7 @@ describe("Skills Configuration", () => {
 	test("collectPluginDirectories warns about non-existent plugin dirs", () => {
 		const logs: string[] = [];
 		const originalLog = console.log;
-		console.log = (...args: any[]) => logs.push(args.join(" "));
+		console.log = (...args: unknown[]) => logs.push(args.map(String).join(" "));
 
 		collectPluginDirectories({
 			pluginDirs: ["/nonexistent/plugin/dir"],
@@ -199,7 +199,7 @@ describe("Skills Configuration", () => {
 
 		const logs: string[] = [];
 		const originalLog = console.log;
-		console.log = (...args: any[]) => logs.push(args.join(" "));
+		console.log = (...args: unknown[]) => logs.push(args.map(String).join(" "));
 
 		collectPluginDirectories({
 			pluginDirs: [invalidPlugin],
@@ -221,7 +221,7 @@ describe("Skills Configuration", () => {
 
 		const logs: string[] = [];
 		const originalLog = console.log;
-		console.log = (...args: any[]) => logs.push(args.join(" "));
+		console.log = (...args: unknown[]) => logs.push(args.map(String).join(" "));
 
 		collectPluginDirectories({
 			pluginDirs: [validPlugin],

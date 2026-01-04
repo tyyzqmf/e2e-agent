@@ -17,6 +17,11 @@ import { JobManager } from "../services/JobManager.ts";
 import { ResultService } from "../services/ResultService.ts";
 import type { ServiceContext } from "../types/index.ts";
 
+/**
+ * Extended Request type with route params for testing
+ */
+type RequestWithParams = Request & { params: Record<string, string> };
+
 describe("API Routes", () => {
 	let tempDir: string;
 	let services: ServiceContext;
@@ -135,10 +140,10 @@ describe("API Routes", () => {
 
 			const req = new Request(`http://localhost/api/jobs/${job.jobId}`);
 			// Simulate params
-			(req as any).params = { id: job.jobId };
+			(req as RequestWithParams).params = { id: job.jobId };
 
 			const handler = routes["GET /api/jobs/:id"];
-			const response = await handler(req as any);
+			const response = await handler(req as RequestWithParams);
 			const data = await response.json();
 
 			expect(response.status).toBe(200);
@@ -148,10 +153,10 @@ describe("API Routes", () => {
 
 		it("should return 404 for non-existent job", async () => {
 			const req = new Request("http://localhost/api/jobs/non-existent");
-			(req as any).params = { id: "non-existent" };
+			(req as RequestWithParams).params = { id: "non-existent" };
 
 			const handler = routes["GET /api/jobs/:id"];
-			const response = await handler(req as any);
+			const response = await handler(req as RequestWithParams);
 			const data = await response.json();
 
 			expect(response.status).toBe(404);
@@ -169,10 +174,10 @@ describe("API Routes", () => {
 			const req = new Request(`http://localhost/api/jobs/${job.jobId}/stop`, {
 				method: "POST",
 			});
-			(req as any).params = { id: job.jobId };
+			(req as RequestWithParams).params = { id: job.jobId };
 
 			const handler = routes["POST /api/jobs/:id/stop"];
-			const response = await handler(req as any);
+			const response = await handler(req as RequestWithParams);
 			const data = await response.json();
 
 			expect(response.status).toBe(200);
@@ -233,10 +238,10 @@ describe("API Routes", () => {
 	describe("GET /api/jobs/:id/report", () => {
 		it("should return 404 for non-existent job", async () => {
 			const req = new Request("http://localhost/api/jobs/nonexistent/report");
-			(req as any).params = { id: "nonexistent" };
+			(req as RequestWithParams).params = { id: "nonexistent" };
 
 			const handler = routes["GET /api/jobs/:id/report"];
-			const response = await handler(req as any);
+			const response = await handler(req as RequestWithParams);
 			const data = await response.json();
 
 			expect(response.status).toBe(404);
@@ -250,10 +255,10 @@ describe("API Routes", () => {
 			);
 
 			const req = new Request(`http://localhost/api/jobs/${job.jobId}/report`);
-			(req as any).params = { id: job.jobId };
+			(req as RequestWithParams).params = { id: job.jobId };
 
 			const handler = routes["GET /api/jobs/:id/report"];
-			const response = await handler(req as any);
+			const response = await handler(req as RequestWithParams);
 			const data = await response.json();
 
 			expect(response.status).toBe(400);
@@ -283,10 +288,10 @@ describe("API Routes", () => {
 			);
 
 			const req = new Request(`http://localhost/api/jobs/${job.jobId}/report`);
-			(req as any).params = { id: job.jobId };
+			(req as RequestWithParams).params = { id: job.jobId };
 
 			const handler = routes["GET /api/jobs/:id/report"];
-			const response = await handler(req as any);
+			const response = await handler(req as RequestWithParams);
 
 			expect(response.status).toBe(200);
 			expect(response.headers.get("Content-Type")).toContain("text/html");
@@ -299,10 +304,10 @@ describe("API Routes", () => {
 			services.jobManager.updateJobStatus(job.jobId, "completed");
 
 			const req = new Request(`http://localhost/api/jobs/${job.jobId}/report`);
-			(req as any).params = { id: job.jobId };
+			(req as RequestWithParams).params = { id: job.jobId };
 
 			const handler = routes["GET /api/jobs/:id/report"];
-			const response = await handler(req as any);
+			const response = await handler(req as RequestWithParams);
 			const data = await response.json();
 
 			expect(response.status).toBe(404);
@@ -313,10 +318,10 @@ describe("API Routes", () => {
 	describe("GET /api/jobs/:id/download", () => {
 		it("should return 404 for non-existent job", async () => {
 			const req = new Request("http://localhost/api/jobs/nonexistent/download");
-			(req as any).params = { id: "nonexistent" };
+			(req as RequestWithParams).params = { id: "nonexistent" };
 
 			const handler = routes["GET /api/jobs/:id/download"];
-			const response = await handler(req as any);
+			const response = await handler(req as RequestWithParams);
 			const data = await response.json();
 
 			expect(response.status).toBe(404);
@@ -332,10 +337,10 @@ describe("API Routes", () => {
 			const req = new Request(
 				`http://localhost/api/jobs/${job.jobId}/download`,
 			);
-			(req as any).params = { id: job.jobId };
+			(req as RequestWithParams).params = { id: job.jobId };
 
 			const handler = routes["GET /api/jobs/:id/download"];
-			const response = await handler(req as any);
+			const response = await handler(req as RequestWithParams);
 			const data = await response.json();
 
 			expect(response.status).toBe(400);
@@ -349,10 +354,10 @@ describe("API Routes", () => {
 			const req = new Request("http://localhost/api/jobs/nonexistent/stop", {
 				method: "POST",
 			});
-			(req as any).params = { id: "nonexistent" };
+			(req as RequestWithParams).params = { id: "nonexistent" };
 
 			const handler = routes["POST /api/jobs/:id/stop"];
-			const response = await handler(req as any);
+			const response = await handler(req as RequestWithParams);
 			const data = await response.json();
 
 			expect(response.status).toBe(400);
@@ -369,10 +374,10 @@ describe("API Routes", () => {
 			const req = new Request(`http://localhost/api/jobs/${job.jobId}/stop`, {
 				method: "POST",
 			});
-			(req as any).params = { id: job.jobId };
+			(req as RequestWithParams).params = { id: job.jobId };
 
 			const handler = routes["POST /api/jobs/:id/stop"];
-			const response = await handler(req as any);
+			const response = await handler(req as RequestWithParams);
 			const data = await response.json();
 
 			expect(response.status).toBe(400);
@@ -406,10 +411,10 @@ describe("API Routes", () => {
 			const req = new Request(`http://localhost/api/jobs/${job.jobId}`, {
 				method: "DELETE",
 			});
-			(req as any).params = { id: job.jobId };
+			(req as RequestWithParams).params = { id: job.jobId };
 
 			const handler = routes["DELETE /api/jobs/:id"];
-			const response = await handler(req as any);
+			const response = await handler(req as RequestWithParams);
 			const data = await response.json();
 
 			expect(response.status).toBe(200);
@@ -427,10 +432,10 @@ describe("API Routes", () => {
 			const req = new Request(`http://localhost/api/jobs/${job.jobId}`, {
 				method: "DELETE",
 			});
-			(req as any).params = { id: job.jobId };
+			(req as RequestWithParams).params = { id: job.jobId };
 
 			const handler = routes["DELETE /api/jobs/:id"];
-			const response = await handler(req as any);
+			const response = await handler(req as RequestWithParams);
 			const data = await response.json();
 
 			expect(response.status).toBe(200);
@@ -447,10 +452,10 @@ describe("API Routes", () => {
 			const req = new Request(`http://localhost/api/jobs/${job.jobId}`, {
 				method: "DELETE",
 			});
-			(req as any).params = { id: job.jobId };
+			(req as RequestWithParams).params = { id: job.jobId };
 
 			const handler = routes["DELETE /api/jobs/:id"];
-			const response = await handler(req as any);
+			const response = await handler(req as RequestWithParams);
 			const data = await response.json();
 
 			expect(response.status).toBe(400);
@@ -462,10 +467,10 @@ describe("API Routes", () => {
 			const req = new Request("http://localhost/api/jobs/non-existent", {
 				method: "DELETE",
 			});
-			(req as any).params = { id: "non-existent" };
+			(req as RequestWithParams).params = { id: "non-existent" };
 
 			const handler = routes["DELETE /api/jobs/:id"];
-			const response = await handler(req as any);
+			const response = await handler(req as RequestWithParams);
 			const data = await response.json();
 
 			expect(response.status).toBe(400);
@@ -572,10 +577,10 @@ describe("API Routes", () => {
 	describe("GET /api/jobs/:id/logs", () => {
 		it("should return 404 for non-existent job", async () => {
 			const req = new Request("http://localhost/api/jobs/nonexistent/logs");
-			(req as any).params = { id: "nonexistent" };
+			(req as RequestWithParams).params = { id: "nonexistent" };
 
 			const handler = routes["GET /api/jobs/:id/logs"];
-			const response = await handler(req as any);
+			const response = await handler(req as RequestWithParams);
 			const data = await response.json();
 
 			expect(response.status).toBe(404);
@@ -589,10 +594,10 @@ describe("API Routes", () => {
 			);
 
 			const req = new Request(`http://localhost/api/jobs/${job.jobId}/logs`);
-			(req as any).params = { id: job.jobId };
+			(req as RequestWithParams).params = { id: job.jobId };
 
 			const handler = routes["GET /api/jobs/:id/logs"];
-			const response = await handler(req as any);
+			const response = await handler(req as RequestWithParams);
 			const data = await response.json();
 
 			expect(response.status).toBe(200);
@@ -615,10 +620,10 @@ describe("API Routes", () => {
 			);
 
 			const req = new Request(`http://localhost/api/jobs/${job.jobId}/logs`);
-			(req as any).params = { id: job.jobId };
+			(req as RequestWithParams).params = { id: job.jobId };
 
 			const handler = routes["GET /api/jobs/:id/logs"];
-			const response = await handler(req as any);
+			const response = await handler(req as RequestWithParams);
 			const data = await response.json();
 
 			expect(response.status).toBe(200);
@@ -643,10 +648,10 @@ describe("API Routes", () => {
 			const req = new Request(
 				`http://localhost/api/jobs/${job.jobId}/logs?tail=2`,
 			);
-			(req as any).params = { id: job.jobId };
+			(req as RequestWithParams).params = { id: job.jobId };
 
 			const handler = routes["GET /api/jobs/:id/logs"];
-			const response = await handler(req as any);
+			const response = await handler(req as RequestWithParams);
 			const data = await response.json();
 
 			expect(response.status).toBe(200);
@@ -667,10 +672,10 @@ describe("API Routes", () => {
 			const req = new Request(
 				`http://localhost/api/jobs/${job.jobId}/logs?format=text`,
 			);
-			(req as any).params = { id: job.jobId };
+			(req as RequestWithParams).params = { id: job.jobId };
 
 			const handler = routes["GET /api/jobs/:id/logs"];
-			const response = await handler(req as any);
+			const response = await handler(req as RequestWithParams);
 
 			expect(response.status).toBe(200);
 			expect(response.headers.get("Content-Type")).toContain("text/plain");
@@ -685,10 +690,10 @@ describe("API Routes", () => {
 			);
 
 			const req = new Request(`http://localhost/api/jobs/${job.jobId}/logs`);
-			(req as any).params = { id: job.jobId };
+			(req as RequestWithParams).params = { id: job.jobId };
 
 			const handler = routes["GET /api/jobs/:id/logs"];
-			const response = await handler(req as any);
+			const response = await handler(req as RequestWithParams);
 			const data = await response.json();
 
 			expect(response.status).toBe(200);
@@ -722,10 +727,10 @@ describe("API Routes", () => {
 			const req = new Request(
 				`http://localhost/api/jobs/${job.jobId}/download`,
 			);
-			(req as any).params = { id: job.jobId };
+			(req as RequestWithParams).params = { id: job.jobId };
 
 			const handler = routes["GET /api/jobs/:id/download"];
-			const response = await handler(req as any);
+			const response = await handler(req as RequestWithParams);
 
 			// Either ZIP created successfully or creation failed
 			expect([200, 500]).toContain(response.status);
