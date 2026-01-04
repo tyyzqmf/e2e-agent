@@ -365,19 +365,37 @@ function logCacheStatistics(usage: {
 
 /**
  * Real-time token usage monitor
- * Tracks cumulative context usage including cache tokens
+ *
+ * Tracks both:
+ * 1. Current context usage - estimated from cumulative deltas or message_start events
+ * 2. Cumulative token usage (for billing) - sum of all tokens across all turns
+ *
+ * Current context estimation:
+ * - Primary: from message_start event (most accurate, but not always available)
+ * - Fallback: from cumulative deltas (last turn's input + cache_read)
+ *
+ * When API returns "Input is too long" error, message_start is never sent,
+ * so we need the fallback estimation to warn before the error occurs.
  */
 class TokenUsageMonitor {
-	private contextWindow: number;
-	private totalInputTokens: number = 0;
-	private totalOutputTokens: number = 0;
-	private cacheReadTokens: number = 0;
-	private cacheWriteTokens: number = 0;
-	private warningLevel: "none" | "warn" | "critical" | "imminent" = "none";
+	private contextWindowLimit: number;
+	// Current context tracking
+	private currentContextTokens: number = 0;
+	private lastTurnInputTokens: number = 0;
+	private lastTurnCacheReadTokens: number = 0;
+	// Previous cumulative values (for calculating deltas)
+	private prevCumulativeInput: number = 0;
+	private prevCumulativeCacheRead: number = 0;
+	// Cumulative values (for billing - sum of all turns)
+	private cumulativeInputTokens: number = 0;
+	private cumulativeOutputTokens: number = 0;
+	private cumulativeCacheReadTokens: number = 0;
+	private cumulativeCacheWriteTokens: number = 0;
 	private turnCount: number = 0;
+	private warningLevel: "none" | "warn" | "critical" | "imminent" = "none";
 
-	constructor(contextWindow: number) {
-		this.contextWindow = contextWindow;
+	constructor(contextWindowLimit: number) {
+		this.contextWindowLimit = contextWindowLimit;
 	}
 
 	/**
@@ -385,78 +403,46 @@ class TokenUsageMonitor {
 	 */
 	logSessionStart(): void {
 		console.log(
-			`[Token Monitor] Session started | Context window: ${(this.contextWindow / 1000).toFixed(0)}K tokens`,
+			`[Token Monitor] Session started | Context limit: ${(this.contextWindowLimit / 1000).toFixed(0)}K tokens`,
 		);
 	}
 
 	/**
-	 * Get actual context usage (input + cache write + cache read)
-	 * All these tokens are processed by the model and count toward context window
+	 * Update current context usage from message_start event.
+	 * This is the most accurate source as it contains the actual input_tokens
+	 * for the current API request.
 	 *
-	 * - input_tokens: New tokens not from cache
-	 * - cache_write: New tokens written to cache (still counts as input)
-	 * - cache_read: Tokens read from cache (still processed by model!)
+	 * @param inputTokens - Input tokens from message_start (current request)
+	 * @param cacheReadTokens - Cache read tokens (also part of current context)
 	 */
-	private getActualContextUsage(): number {
-		return (
-			this.totalInputTokens + this.cacheWriteTokens + this.cacheReadTokens
-		);
-	}
+	updateCurrentContext(inputTokens: number, cacheReadTokens: number = 0): void {
+		// Current context = input_tokens + cache_read_tokens
+		this.currentContextTokens = inputTokens + cacheReadTokens;
+		this.lastTurnInputTokens = inputTokens;
+		this.lastTurnCacheReadTokens = cacheReadTokens;
 
-	/**
-	 * Update token usage from a message
-	 *
-	 * @param inputTokens - New (non-cached) input tokens
-	 * @param outputTokens - Output tokens generated
-	 * @param cacheReadTokens - Tokens read from cache (counts toward context!)
-	 * @param cacheWriteTokens - Tokens written to cache
-	 */
-	updateUsage(
-		inputTokens: number,
-		outputTokens: number,
-		cacheReadTokens: number = 0,
-		cacheWriteTokens: number = 0,
-	): void {
-		this.totalInputTokens = inputTokens;
-		this.totalOutputTokens = outputTokens;
-		this.cacheReadTokens = cacheReadTokens;
-		this.cacheWriteTokens = cacheWriteTokens;
-		this.turnCount++;
-
-		// Always log token usage after each tool call / turn
-		this.logCurrentUsage();
-
-		// Check warning thresholds
+		// Log current context and check warnings
+		this.logCurrentContext();
 		this.checkWarningThresholds();
 	}
 
 	/**
-	 * Log current token usage
+	 * Log current context usage
 	 */
-	private logCurrentUsage(): void {
-		// Actual context = all tokens the model processes (input + cache_write + cache_read)
-		const actualContext = this.getActualContextUsage();
-		const actualPercent = (actualContext / this.contextWindow) * 100;
+	private logCurrentContext(): void {
+		const usagePercent =
+			(this.currentContextTokens / this.contextWindowLimit) * 100;
 
-		// New tokens this turn (not from cache)
-		const newTokens = this.totalInputTokens + this.cacheWriteTokens;
-
-		let message = `[Token Monitor] Context: ${(actualContext / 1000).toFixed(1)}K / ${(this.contextWindow / 1000).toFixed(0)}K (${actualPercent.toFixed(1)}%)`;
-
-		if (this.cacheReadTokens > 0) {
-			message += ` | New: ${(newTokens / 1000).toFixed(1)}K, Cached: ${(this.cacheReadTokens / 1000).toFixed(1)}K`;
-		}
-
-		console.log(message);
+		console.log(
+			`[Token Monitor] Context: ${(this.currentContextTokens / 1000).toFixed(1)}K / ${(this.contextWindowLimit / 1000).toFixed(0)}K (${usagePercent.toFixed(1)}%)`,
+		);
 	}
 
 	/**
-	 * Check and emit warnings based on usage thresholds
-	 * Uses actual context (input + cache_write + cache_read) for accurate warnings
+	 * Check and emit warnings based on context usage thresholds
 	 */
 	private checkWarningThresholds(): void {
-		const actualContext = this.getActualContextUsage();
-		const usageRatio = actualContext / this.contextWindow;
+		const usageRatio = this.currentContextTokens / this.contextWindowLimit;
 
 		if (
 			usageRatio >= TOKEN_WARNING_THRESHOLDS.COMPRESSION_IMMINENT &&
@@ -466,9 +452,9 @@ class TokenUsageMonitor {
 			console.warn(
 				`\n⚠️  [Token Monitor] WARNING: Context at ${(usageRatio * 100).toFixed(1)}% - ` +
 					`COMPRESSION IMMINENT!\n` +
-					`    Current: ${(actualContext / 1000).toFixed(1)}K tokens\n` +
-					`    Threshold: ${((this.contextWindow * TOKEN_WARNING_THRESHOLDS.COMPRESSION_IMMINENT) / 1000).toFixed(0)}K tokens\n` +
-					`    (Cache Read: ${(this.cacheReadTokens / 1000).toFixed(1)}K)\n`,
+					`    Current: ${(this.currentContextTokens / 1000).toFixed(1)}K tokens\n` +
+					`    Limit: ${(this.contextWindowLimit / 1000).toFixed(0)}K tokens\n` +
+					`    Threshold: ${(TOKEN_WARNING_THRESHOLDS.COMPRESSION_IMMINENT * 100).toFixed(0)}%\n`,
 			);
 		} else if (
 			usageRatio >= TOKEN_WARNING_THRESHOLDS.CRITICAL &&
@@ -492,51 +478,101 @@ class TokenUsageMonitor {
 	}
 
 	/**
+	 * Update cumulative token usage and estimate current context from deltas.
+	 *
+	 * This method calculates the delta (difference from last cumulative values)
+	 * to estimate the current context size. This is a fallback when message_start
+	 * events are not available (e.g., when API returns error before streaming).
+	 *
+	 * @param inputTokens - Cumulative non-cached input tokens
+	 * @param outputTokens - Cumulative output tokens generated
+	 * @param cacheReadTokens - Cumulative tokens read from cache
+	 * @param cacheWriteTokens - Cumulative tokens written to cache
+	 */
+	updateCumulativeUsage(
+		inputTokens: number,
+		outputTokens: number,
+		cacheReadTokens: number = 0,
+		cacheWriteTokens: number = 0,
+	): void {
+		// Calculate deltas (this turn's usage)
+		const deltaInput = inputTokens - this.prevCumulativeInput;
+		const deltaCacheRead = cacheReadTokens - this.prevCumulativeCacheRead;
+
+		// Estimate current context from delta if we haven't received message_start
+		// Delta represents this turn's input, which approximates current context
+		if (deltaInput > 0 || deltaCacheRead > 0) {
+			const estimatedContext = deltaInput + deltaCacheRead;
+			// Only update if we have a reasonable estimate and it's larger than current
+			if (estimatedContext > this.currentContextTokens) {
+				this.currentContextTokens = estimatedContext;
+				this.lastTurnInputTokens = deltaInput;
+				this.lastTurnCacheReadTokens = deltaCacheRead;
+
+				// Log and check warnings
+				this.logCurrentContext();
+				this.checkWarningThresholds();
+			}
+		}
+
+		// Save current as previous for next delta calculation
+		this.prevCumulativeInput = inputTokens;
+		this.prevCumulativeCacheRead = cacheReadTokens;
+
+		// Update cumulative values
+		this.cumulativeInputTokens = inputTokens;
+		this.cumulativeOutputTokens = outputTokens;
+		this.cumulativeCacheReadTokens = cacheReadTokens;
+		this.cumulativeCacheWriteTokens = cacheWriteTokens;
+		this.turnCount++;
+	}
+
+	/**
 	 * Print final summary
 	 */
 	printSummary(): void {
-		// Actual context = all tokens processed by model
-		const actualContext = this.getActualContextUsage();
-		const actualPercent = (actualContext / this.contextWindow) * 100;
+		// Calculate cumulative totals (for billing reference)
+		const cumulativeTotal =
+			this.cumulativeInputTokens +
+			this.cumulativeCacheWriteTokens +
+			this.cumulativeCacheReadTokens;
 
-		// New tokens (not from cache)
-		const newTokens = this.totalInputTokens + this.cacheWriteTokens;
+		const contextPercent =
+			(this.currentContextTokens / this.contextWindowLimit) * 100;
 
 		console.log("\n" + "─".repeat(60));
 		console.log("[Token Monitor] Session Summary");
 		console.log("─".repeat(60));
 
-		// Show actual context usage (this is what matters for "Input is too long" errors)
-		console.log(
-			`Actual Context:  ${(actualContext / 1000).toFixed(1)}K / ${(this.contextWindow / 1000).toFixed(0)}K tokens (${actualPercent.toFixed(1)}%)`,
-		);
-
-		// Show breakdown
-		console.log(
-			`  New Tokens:    ${(newTokens / 1000).toFixed(1)}K (input: ${(this.totalInputTokens / 1000).toFixed(1)}K + cache_write: ${(this.cacheWriteTokens / 1000).toFixed(1)}K)`,
-		);
-		if (this.cacheReadTokens > 0) {
+		// Show current context usage (last turn's context)
+		if (this.currentContextTokens > 0) {
 			console.log(
-				`  Cache Read:    ${(this.cacheReadTokens / 1000).toFixed(1)}K (from prompt cache, still counts toward context!)`,
+				`Last Turn Context: ${(this.currentContextTokens / 1000).toFixed(1)}K / ${(this.contextWindowLimit / 1000).toFixed(0)}K (${contextPercent.toFixed(1)}%)`,
 			);
+			if (this.lastTurnInputTokens > 0 || this.lastTurnCacheReadTokens > 0) {
+				console.log(
+					`  (input: ${(this.lastTurnInputTokens / 1000).toFixed(1)}K + cache_read: ${(this.lastTurnCacheReadTokens / 1000).toFixed(1)}K)`,
+				);
+			}
+			console.log();
 		}
 
-		console.log(`\nToken Breakdown:`);
+		console.log(`Cumulative Token Usage (for billing):`);
 		console.log(
-			`  New Input:     ${this.totalInputTokens.toLocaleString().padStart(12)} tokens`,
+			`  Input:         ${this.cumulativeInputTokens.toLocaleString().padStart(12)} tokens`,
 		);
 		console.log(
-			`  Cache Write:   ${this.cacheWriteTokens.toLocaleString().padStart(12)} tokens`,
+			`  Cache Write:   ${this.cumulativeCacheWriteTokens.toLocaleString().padStart(12)} tokens`,
 		);
 		console.log(
-			`  Cache Read:    ${this.cacheReadTokens.toLocaleString().padStart(12)} tokens (counts toward context!)`,
+			`  Cache Read:    ${this.cumulativeCacheReadTokens.toLocaleString().padStart(12)} tokens`,
 		);
 		console.log(
-			`  Output:        ${this.totalOutputTokens.toLocaleString().padStart(12)} tokens`,
+			`  Output:        ${this.cumulativeOutputTokens.toLocaleString().padStart(12)} tokens`,
 		);
 		console.log(`  ${"─".repeat(37)}`);
 		console.log(
-			`  Total Input:   ${actualContext.toLocaleString().padStart(12)} tokens`,
+			`  Total Input:   ${cumulativeTotal.toLocaleString().padStart(12)} tokens (cumulative)`,
 		);
 		console.log("─".repeat(60) + "\n");
 	}
@@ -771,9 +807,9 @@ function createSdkClient(options: SdkClientOptions): ClaudeClient {
 								resultMsg.usage?.cache_read_input_tokens ?? 0,
 						};
 
-						// Update token monitor with final usage (including cache tokens)
+						// Update token monitor with final cumulative usage (for billing)
 						if (tokenMonitor) {
-							tokenMonitor.updateUsage(
+							tokenMonitor.updateCumulativeUsage(
 								usage.input_tokens,
 								usage.output_tokens,
 								usage.cache_read_input_tokens,
@@ -799,15 +835,18 @@ function createSdkClient(options: SdkClientOptions): ClaudeClient {
 						continue;
 					}
 
-					// Update token monitor from streaming usage (if available)
+					// Update token monitor from streaming events
 					if (message.type === "stream_event" && tokenMonitor) {
 						const streamMsg = message as any;
-						if (streamMsg.event?.usage) {
-							tokenMonitor.updateUsage(
-								streamMsg.event.usage.input_tokens ?? 0,
-								streamMsg.event.usage.output_tokens ?? 0,
-								streamMsg.event.usage.cache_read_input_tokens ?? 0,
-								streamMsg.event.usage.cache_creation_input_tokens ?? 0,
+						const event = streamMsg.event;
+
+						// Capture current context from message_start event
+						// message_start contains input_tokens for THIS request (= current context size)
+						if (event?.type === "message_start" && event.message?.usage) {
+							const msgUsage = event.message.usage;
+							tokenMonitor.updateCurrentContext(
+								msgUsage.input_tokens ?? 0,
+								msgUsage.cache_read_input_tokens ?? 0,
 							);
 						}
 					}

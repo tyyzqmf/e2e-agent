@@ -319,6 +319,8 @@ export async function runAutonomousTestingAgent(
 					durationMs: usageData.durationMs,
 					numTurns: usageData.numTurns,
 					tokens: usageData.usage,
+					// Use SDK-provided cost (more accurate than local calculation)
+					sdkCostUsd: usageData.totalCostUsd,
 				});
 				usageTracker.displaySessionStats(sessionRecord);
 			} catch (error) {

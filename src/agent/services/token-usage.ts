@@ -35,6 +35,10 @@ export class TokenUsageTracker {
 
 	/**
 	 * Record a completed session's usage data.
+	 *
+	 * @param params.sdkCostUsd - Optional cost from SDK (preferred over local calculation)
+	 *                           SDK's total_cost_usd is more accurate as it uses Anthropic's
+	 *                           official pricing. Local calculation is used as fallback.
 	 */
 	recordSession(params: {
 		sessionId: string;
@@ -43,12 +47,32 @@ export class TokenUsageTracker {
 		durationMs: number;
 		numTurns: number;
 		tokens: TokenUsage;
+		sdkCostUsd?: number | null;
 	}): SessionRecord {
-		// Calculate costs
-		const costs = this.pricingCalculator.calculateCost(
+		// Use SDK cost if available, otherwise calculate locally (fallback)
+		const useLocalCalculation =
+			params.sdkCostUsd === undefined || params.sdkCostUsd === null;
+
+		// Calculate costs locally (needed for breakdown even when using SDK total)
+		const localCosts = this.pricingCalculator.calculateCost(
 			params.tokens,
 			params.model,
 		);
+
+		// Use SDK total cost if available, otherwise use local calculation
+		const costs = useLocalCalculation
+			? localCosts
+			: {
+					...localCosts,
+					// Override total with SDK value (more accurate)
+					totalCost: params.sdkCostUsd,
+				};
+
+		if (!useLocalCalculation) {
+			console.log(
+				`[Cost] Using SDK-provided cost: $${params.sdkCostUsd?.toFixed(4)}`,
+			);
+		}
 
 		// Calculate total tokens
 		const totalTokens =
