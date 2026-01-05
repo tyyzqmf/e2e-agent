@@ -14,7 +14,7 @@ const MODULE_DIR = dirname(new URL(import.meta.url).pathname);
  * Default model to use for the agent
  * This is an inference profile ID for AWS Bedrock
  */
-export const DEFAULT_MODEL = "us.anthropic.claude-sonnet-4-5-20250929-v1:0";
+export const DEFAULT_MODEL = "us.anthropic.claude-sonnet-4-5-20250929-v1:0[1m]";
 
 /**
  * Default project directory name
@@ -38,7 +38,6 @@ export const BEDROCK_ENV_VALUES = ["true", "1", "yes"] as const;
 
 /**
  * Maximum number of agent turns per session
- * With 1M context window enabled, we can handle more turns
  */
 export const MAX_TURNS = 100;
 
@@ -52,14 +51,9 @@ export const AUTO_CONTINUE_DELAY_MS = 3000;
 // ====================================
 
 /**
- * Context window sizes for different models (in tokens)
+ * Context window size (1M tokens with [1m] model suffix)
  */
-export const CONTEXT_WINDOW = {
-	/** Default context window (200K) */
-	DEFAULT: 200_000,
-	/** Extended context window with 1M beta */
-	EXTENDED_1M: 1_000_000,
-} as const;
+export const CONTEXT_WINDOW = 1_000_000;
 
 /**
  * Context compression threshold percentage (display only)
@@ -71,12 +65,6 @@ export const CONTEXT_WINDOW = {
  * @see https://platform.claude.com/docs/en/build-with-claude/context-editing
  */
 export const CONTEXT_COMPRESSION_THRESHOLD = 0.85;
-
-/**
- * Whether to enable the 1M context window beta
- * When true, uses 'context-1m-2025-08-07' beta for extended context
- */
-export const ENABLE_1M_CONTEXT = true;
 
 // ====================================
 // Prompt Caching Configuration

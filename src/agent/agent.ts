@@ -26,7 +26,6 @@ import {
 	printTestSessionHeader,
 	setupProjectDirectory,
 	TokenUsageTracker,
-	updateHtmlReportCostStatistics,
 } from "./services/index.ts";
 import { PricingCalculator } from "./services/pricing.ts";
 import { runAgentSession } from "./session.ts";
@@ -268,15 +267,6 @@ export async function runAutonomousTestingAgent(
 		}
 	} catch (error) {
 		console.log(`\n[Warning] Failed to generate cost report: ${error}`);
-	}
-
-	// Post-process HTML report
-	try {
-		await updateHtmlReportCostStatistics(projectDir);
-	} catch (error) {
-		console.log(
-			`\n[Warning] Failed to update HTML report cost statistics: ${error}`,
-		);
 	}
 
 	// Print instructions

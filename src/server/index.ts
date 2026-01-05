@@ -34,10 +34,10 @@ function initializeServices(): ServiceContext {
 
 /**
  * Build route handlers
+ * Uses 'any' for request type to accommodate both Request and BunRequest handlers
  */
-function buildRoutes(
-	services: ServiceContext,
-): Record<string, (req: Request) => Response | Promise<Response>> {
+// biome-ignore lint/suspicious/noExplicitAny: Routes accept both Request and BunRequest types
+function buildRoutes(services: ServiceContext): Record<string, (req: any) => Response | Promise<Response>> {
 	return {
 		// Health check
 		...buildHealthRoute(services),
@@ -54,7 +54,8 @@ function buildRoutes(
  * Create request handler with middleware
  */
 function createRequestHandler(
-	routes: Record<string, (req: Request) => Response | Promise<Response>>,
+	// biome-ignore lint/suspicious/noExplicitAny: Routes accept both Request and BunRequest types
+	routes: Record<string, (req: any) => Response | Promise<Response>>,
 ) {
 	return async (req: Request): Promise<Response> => {
 		const startTime = performance.now();

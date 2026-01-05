@@ -11,7 +11,6 @@ import { join } from "node:path";
 import type {
 	McpStdioServerConfig,
 	Options as SDKOptions,
-	SdkBeta,
 } from "@anthropic-ai/claude-agent-sdk";
 import { GetCallerIdentityCommand, STSClient } from "@aws-sdk/client-sts";
 import { fromNodeProviderChain } from "@aws-sdk/credential-providers";
@@ -19,7 +18,6 @@ import {
 	BEDROCK_ENV_VALUES,
 	CONTEXT_COMPRESSION_THRESHOLD,
 	CONTEXT_WINDOW,
-	ENABLE_1M_CONTEXT,
 	ISOLATE_SESSION_CACHE,
 	MAX_TURNS,
 	MIN_CACHEABLE_TOKENS,
@@ -352,18 +350,9 @@ export async function createSdkOptions(
 		...authConfig.envVars,
 	};
 
-	// Configure betas for extended context window
-	const betas: SdkBeta[] = [];
-	if (ENABLE_1M_CONTEXT) {
-		betas.push("context-1m-2025-08-07");
-	}
-
-	// Context window configuration
-	const contextWindow = ENABLE_1M_CONTEXT
-		? CONTEXT_WINDOW.EXTENDED_1M
-		: CONTEXT_WINDOW.DEFAULT;
+	// Context window configuration (200K for AWS Bedrock)
 	const compressionThreshold = Math.floor(
-		contextWindow * CONTEXT_COMPRESSION_THRESHOLD,
+		CONTEXT_WINDOW * CONTEXT_COMPRESSION_THRESHOLD,
 	);
 
 	// Log session mode
@@ -376,7 +365,7 @@ export async function createSdkOptions(
 	}
 
 	console.log(
-		`[Context] Window: ${(contextWindow / 1000).toFixed(0)}K tokens, ` +
+		`[Context] Window: ${(CONTEXT_WINDOW / 1000).toFixed(0)}K tokens, ` +
 			`Auto-compaction at: ~${(compressionThreshold / 1000).toFixed(0)}K tokens ` +
 			`(${(CONTEXT_COMPRESSION_THRESHOLD * 100).toFixed(0)}%)`,
 	);
@@ -392,7 +381,6 @@ export async function createSdkOptions(
 		allowedTools,
 		maxTurns: MAX_TURNS,
 		env,
-		betas: betas.length > 0 ? betas : undefined,
 		plugins: validatedPluginDirs.map((path) => ({
 			type: "local" as const,
 			path,

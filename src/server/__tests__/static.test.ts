@@ -150,7 +150,7 @@ describe("Static Routes", () => {
 
 		it("should include error details", async () => {
 			const response = notFoundHandler();
-			const data = await response.json();
+			const data = (await response.json()) as { success: boolean; code: string; error: string };
 
 			expect(data.success).toBe(false);
 			expect(data.code).toBe("NOT_FOUND");
@@ -159,7 +159,7 @@ describe("Static Routes", () => {
 
 		it("should have English error message", async () => {
 			const response = notFoundHandler();
-			const data = await response.json();
+			const data = (await response.json()) as { error: string };
 
 			expect(data.error).toBe("Resource not found");
 		});

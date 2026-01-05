@@ -310,10 +310,10 @@ export async function handleJobCommand(
 
 		case "log": {
 			const options = parseLogOptions(args);
-			await getJobLog(options.jobId, {
-				tail: options.tail,
-				follow: options.follow,
-			});
+			const logOptions: { tail?: number; follow?: boolean } = {};
+			if (options.tail !== undefined) logOptions.tail = options.tail;
+			if (options.follow !== undefined) logOptions.follow = options.follow;
+			await getJobLog(options.jobId, logOptions);
 			break;
 		}
 

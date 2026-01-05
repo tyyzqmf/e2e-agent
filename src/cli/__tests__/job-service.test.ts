@@ -100,7 +100,7 @@ describe("JobService", () => {
 
 			const job = jobService.getJob(jobId as string);
 			expect(job).not.toBeNull();
-			expect(job?.jobId).toBe(jobId);
+			expect(job?.jobId).toBe(jobId ?? undefined);
 			expect(job?.status).toBe("queued");
 		});
 	});
@@ -241,7 +241,7 @@ describe("JobService", () => {
 			writeFileSync(specFile, "Test specification for FIFO queue test");
 
 			const jobId1 = freshService.submitJob(specFile);
-			const _jobId2 = freshService.submitJob(specFile);
+			freshService.submitJob(specFile); // Second job for queue testing
 
 			const dequeuedId = freshService.dequeue();
 			expect(dequeuedId).toBe(jobId1);

@@ -6,6 +6,15 @@
  */
 
 /**
+ * Format size in human-readable format
+ */
+function formatSize(bytes: number): string {
+	if (bytes < 1024) return `${bytes}B`;
+	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+	return `${(bytes / (1024 * 1024)).toFixed(2)}MB`;
+}
+
+/**
  * Format and print tool use information
  */
 export function formatToolUseOutput(
@@ -20,6 +29,8 @@ export function formatToolUseOutput(
 
 	if (toolInput !== undefined) {
 		const inputStr = JSON.stringify(toolInput);
+		const inputSize = Buffer.byteLength(inputStr, "utf8");
+		console.log(`   Input size: ${formatSize(inputSize)}`);
 		if (inputStr.length > maxInputLen) {
 			console.log(`   Input: ${inputStr.slice(0, maxInputLen)}...`);
 		} else {
@@ -39,6 +50,8 @@ export function formatToolResultOutput(
 ): void {
 	const timeSuffix =
 		executionTime !== undefined ? ` (took ${executionTime.toFixed(1)}s)` : "";
+	const outputSize = Buffer.byteLength(resultContent, "utf8");
+	console.log(`   Output size: ${formatSize(outputSize)}`);
 
 	if (resultContent.toLowerCase().includes("blocked")) {
 		const truncated =

@@ -36,8 +36,4 @@ export {
 } from "./prompts.ts";
 
 // Token usage tracking
-export {
-	CostReportGenerator,
-	TokenUsageTracker,
-	updateHtmlReportCostStatistics,
-} from "./token-usage.ts";
+export { CostReportGenerator, TokenUsageTracker } from "./token-usage.ts";

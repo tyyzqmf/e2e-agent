@@ -130,57 +130,57 @@ describe("Config", () => {
 		it("should print header lines", () => {
 			printConfig();
 
-			const calls = consoleSpy.mock.calls.map((c) => c[0]);
+			const calls = consoleSpy.mock.calls.map((c: unknown[]) => c[0]);
 			// Should include separator lines
-			const hasSeparator = calls.some((line) => line?.includes("="));
+			const hasSeparator = calls.some((line: unknown) => (line as string)?.includes("="));
 			expect(hasSeparator).toBe(true);
 		});
 
 		it("should print runtime info", () => {
 			printConfig();
 
-			const calls = consoleSpy.mock.calls.map((c) => c[0]);
-			const hasRuntime = calls.some((line) => line?.includes("Runtime"));
+			const calls = consoleSpy.mock.calls.map((c: unknown[]) => c[0]);
+			const hasRuntime = calls.some((line: unknown) => (line as string)?.includes("Runtime"));
 			expect(hasRuntime).toBe(true);
 		});
 
 		it("should print environment info", () => {
 			printConfig();
 
-			const calls = consoleSpy.mock.calls.map((c) => c[0]);
-			const hasEnv = calls.some((line) => line?.includes("Environment"));
+			const calls = consoleSpy.mock.calls.map((c: unknown[]) => c[0]);
+			const hasEnv = calls.some((line: unknown) => (line as string)?.includes("Environment"));
 			expect(hasEnv).toBe(true);
 		});
 
 		it("should print server info", () => {
 			printConfig();
 
-			const calls = consoleSpy.mock.calls.map((c) => c[0]);
-			const hasServer = calls.some((line) => line?.includes("Server"));
+			const calls = consoleSpy.mock.calls.map((c: unknown[]) => c[0]);
+			const hasServer = calls.some((line: unknown) => (line as string)?.includes("Server"));
 			expect(hasServer).toBe(true);
 		});
 
 		it("should print data directory", () => {
 			printConfig();
 
-			const calls = consoleSpy.mock.calls.map((c) => c[0]);
-			const hasDataDir = calls.some((line) => line?.includes("Data Dir"));
+			const calls = consoleSpy.mock.calls.map((c: unknown[]) => c[0]);
+			const hasDataDir = calls.some((line: unknown) => (line as string)?.includes("Data Dir"));
 			expect(hasDataDir).toBe(true);
 		});
 
 		it("should print database path", () => {
 			printConfig();
 
-			const calls = consoleSpy.mock.calls.map((c) => c[0]);
-			const hasDatabase = calls.some((line) => line?.includes("Database"));
+			const calls = consoleSpy.mock.calls.map((c: unknown[]) => c[0]);
+			const hasDatabase = calls.some((line: unknown) => (line as string)?.includes("Database"));
 			expect(hasDatabase).toBe(true);
 		});
 
 		it("should print log level", () => {
 			printConfig();
 
-			const calls = consoleSpy.mock.calls.map((c) => c[0]);
-			const hasLogLevel = calls.some((line) => line?.includes("Log Level"));
+			const calls = consoleSpy.mock.calls.map((c: unknown[]) => c[0]);
+			const hasLogLevel = calls.some((line: unknown) => (line as string)?.includes("Log Level"));
 			expect(hasLogLevel).toBe(true);
 		});
 	});

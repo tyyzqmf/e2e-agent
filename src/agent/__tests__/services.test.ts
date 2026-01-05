@@ -40,7 +40,6 @@ import {
 import {
 	CostReportGenerator,
 	TokenUsageTracker,
-	updateHtmlReportCostStatistics,
 } from "../services/token-usage.ts";
 
 // Create a temp directory for tests
@@ -536,27 +535,6 @@ describe("Token Usage Service", () => {
 		expect(history.length).toBe(2);
 		expect(history[0].sessionId).toBe("session-1");
 		expect(history[1].sessionId).toBe("session-2");
-	});
-
-	test("updateHtmlReportCostStatistics returns false when no stats file", async () => {
-		const result = await updateHtmlReportCostStatistics(testDir);
-		expect(result).toBe(false);
-	});
-
-	test("updateHtmlReportCostStatistics returns false when no test-reports dir", async () => {
-		// Create stats file but no test-reports
-		const tracker = new TokenUsageTracker(testDir);
-		tracker.recordSession({
-			sessionId: "session-1",
-			sessionType: "test_executor",
-			model: "claude-sonnet-4-5-20250929",
-			durationMs: 30000,
-			numTurns: 3,
-			tokens: { inputTokens: 5000, outputTokens: 2000 },
-		});
-
-		const result = await updateHtmlReportCostStatistics(testDir);
-		expect(result).toBe(false);
 	});
 });
 
@@ -1096,147 +1074,6 @@ describe("Token Usage Service - Extended", () => {
 		if (existsSync(tokenTestDir)) {
 			rmSync(tokenTestDir, { recursive: true, force: true });
 		}
-	});
-
-	test("updateHtmlReportCostStatistics handles empty report directories", async () => {
-		// Create stats file
-		const tracker = new TokenUsageTracker(tokenTestDir);
-		tracker.recordSession({
-			sessionId: "session-1",
-			sessionType: "test_executor",
-			model: "claude-sonnet-4-5-20250929",
-			durationMs: 30000,
-			numTurns: 3,
-			tokens: { inputTokens: 5000, outputTokens: 2000 },
-		});
-
-		// Create empty test-reports directory
-		mkdirSync(join(tokenTestDir, "test-reports"), { recursive: true });
-
-		const result = await updateHtmlReportCostStatistics(tokenTestDir);
-		expect(result).toBe(false);
-	});
-
-	test("updateHtmlReportCostStatistics handles missing HTML file", async () => {
-		// Create stats file
-		const tracker = new TokenUsageTracker(tokenTestDir);
-		tracker.recordSession({
-			sessionId: "session-1",
-			sessionType: "test_executor",
-			model: "claude-sonnet-4-5-20250929",
-			durationMs: 30000,
-			numTurns: 3,
-			tokens: { inputTokens: 5000, outputTokens: 2000 },
-		});
-
-		// Create report directory without HTML file
-		const reportDir = join(tokenTestDir, "test-reports", "2025-01-01");
-		mkdirSync(reportDir, { recursive: true });
-
-		const result = await updateHtmlReportCostStatistics(tokenTestDir);
-		expect(result).toBe(false);
-	});
-
-	test("updateHtmlReportCostStatistics handles HTML without placeholders", async () => {
-		// Create stats file
-		const tracker = new TokenUsageTracker(tokenTestDir);
-		tracker.recordSession({
-			sessionId: "session-1",
-			sessionType: "test_executor",
-			model: "claude-sonnet-4-5-20250929",
-			durationMs: 30000,
-			numTurns: 3,
-			tokens: { inputTokens: 5000, outputTokens: 2000 },
-		});
-
-		// Create report directory with HTML file without placeholders
-		const reportDir = join(tokenTestDir, "test-reports", "2025-01-01");
-		mkdirSync(reportDir, { recursive: true });
-		writeFileSync(
-			join(reportDir, "Test_Report_Viewer.html"),
-			"<html><body>No placeholders</body></html>",
-			"utf-8",
-		);
-
-		const result = await updateHtmlReportCostStatistics(tokenTestDir);
-		expect(result).toBe(false);
-	});
-
-	test("updateHtmlReportCostStatistics updates HTML with placeholders", async () => {
-		// Create stats file
-		const tracker = new TokenUsageTracker(tokenTestDir);
-		tracker.recordSession({
-			sessionId: "session-1",
-			sessionType: "test_executor",
-			model: "claude-sonnet-4-5-20250929",
-			durationMs: 120000, // 2 minutes
-			numTurns: 3,
-			tokens: { inputTokens: 5000, outputTokens: 2000 },
-		});
-
-		// Create report directory with HTML file with placeholders
-		const reportDir = join(tokenTestDir, "test-reports", "2025-01-01");
-		mkdirSync(reportDir, { recursive: true });
-		writeFileSync(
-			join(reportDir, "Test_Report_Viewer.html"),
-			"<html><body>Cost: {{TOTAL_COST}}, Tokens: {{TOTAL_TOKENS}}, Duration: {{DURATION}}, Sessions: {{SESSIONS}}</body></html>",
-			"utf-8",
-		);
-
-		const result = await updateHtmlReportCostStatistics(tokenTestDir);
-		expect(result).toBe(true);
-
-		// Verify placeholders were replaced
-		const updatedHtml = readFileSync(
-			join(reportDir, "Test_Report_Viewer.html"),
-			"utf-8",
-		);
-		expect(updatedHtml).not.toContain("{{TOTAL_COST}}");
-		expect(updatedHtml).toContain("$");
-	});
-
-	test("updateHtmlReportCostStatistics handles short duration (seconds)", async () => {
-		// Create stats file with short duration
-		const tracker = new TokenUsageTracker(tokenTestDir);
-		tracker.recordSession({
-			sessionId: "session-1",
-			sessionType: "test_executor",
-			model: "claude-sonnet-4-5-20250929",
-			durationMs: 30000, // 30 seconds
-			numTurns: 3,
-			tokens: { inputTokens: 5000, outputTokens: 2000 },
-		});
-
-		// Create report directory with HTML file with placeholders
-		const reportDir = join(tokenTestDir, "test-reports", "2025-01-01");
-		mkdirSync(reportDir, { recursive: true });
-		writeFileSync(
-			join(reportDir, "Test_Report_Viewer.html"),
-			"<html>{{DURATION}}</html>",
-			"utf-8",
-		);
-
-		const result = await updateHtmlReportCostStatistics(tokenTestDir);
-		expect(result).toBe(true);
-
-		// Verify duration shows in seconds
-		const updatedHtml = readFileSync(
-			join(reportDir, "Test_Report_Viewer.html"),
-			"utf-8",
-		);
-		expect(updatedHtml).toContain("~30s");
-	});
-
-	test("updateHtmlReportCostStatistics handles invalid stats JSON", async () => {
-		// Create invalid stats file
-		writeFileSync(
-			join(tokenTestDir, "usage_statistics.json"),
-			"invalid json",
-			"utf-8",
-		);
-
-		const result = await updateHtmlReportCostStatistics(tokenTestDir);
-		expect(result).toBe(false);
 	});
 
 	test("TokenUsageTracker handles corrupted stats file", () => {
