@@ -14,9 +14,9 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
+import { createSdkOptions } from "./client.ts";
 import type { AgentOptions } from "./config.ts";
 import { AUTO_CONTINUE_DELAY_MS, DEFAULT_MODEL } from "./config.ts";
-import { createSdkOptions } from "./sdk-utils.ts";
 import {
 	CostReportGenerator,
 	getTestExecutorPrompt,

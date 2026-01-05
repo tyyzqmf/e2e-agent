@@ -10,7 +10,6 @@ import type {
 	SDKCompactBoundaryMessage,
 	SDKUserMessage,
 } from "@anthropic-ai/claude-agent-sdk";
-import type { ContextUsageTracker } from "../utils/context-tracker.ts";
 import {
 	formatToolResultOutput,
 	formatToolUseOutput,
@@ -22,7 +21,6 @@ import {
 export function handleAssistantMessage(
 	msg: SDKAssistantMessage,
 	lastEventTime: { value: number },
-	contextTracker?: ContextUsageTracker,
 ): { text: string; toolStartTime: number | null } {
 	let text = "";
 	let toolStartTime: number | null = null;
@@ -38,10 +36,6 @@ export function handleAssistantMessage(
 			const textBlock = block as { type: "text"; text: string };
 			text += textBlock.text;
 			process.stdout.write(textBlock.text);
-			// Track output tokens
-			if (contextTracker) {
-				contextTracker.addOutputTokens(textBlock.text);
-			}
 		} else if (block.type === "tool_use") {
 			const toolBlock = block as {
 				type: "tool_use";
@@ -51,10 +45,6 @@ export function handleAssistantMessage(
 			const thinkingTime = (Date.now() - lastEventTime.value) / 1000;
 			formatToolUseOutput(toolBlock.name, thinkingTime, toolBlock.input);
 			toolStartTime = Date.now();
-			// Track tool call as output tokens
-			if (contextTracker) {
-				contextTracker.addOutputTokens(JSON.stringify(toolBlock.input || {}));
-			}
 		}
 	}
 
@@ -68,7 +58,6 @@ export function handleUserMessage(
 	msg: SDKUserMessage,
 	toolStartTime: number | null,
 	lastEventTime: { value: number },
-	contextTracker?: ContextUsageTracker,
 ): void {
 	const content = msg.message?.content;
 	if (!Array.isArray(content)) return;
@@ -100,13 +89,6 @@ export function handleUserMessage(
 
 			formatToolResultOutput(contentStr, isError, executionTime);
 			lastEventTime.value = Date.now();
-
-			// Track tool result tokens and display context usage
-			if (contextTracker) {
-				contextTracker.addInputTokens(contentStr);
-				contextTracker.incrementTurn();
-				contextTracker.displayUsage();
-			}
 		}
 	}
 }

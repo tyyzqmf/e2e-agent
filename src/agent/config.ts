@@ -76,7 +76,7 @@ export const CONTEXT_COMPRESSION_THRESHOLD = 0.85;
  * Whether to enable the 1M context window beta
  * When true, uses 'context-1m-2025-08-07' beta for extended context
  */
-export const ENABLE_1M_CONTEXT = false;
+export const ENABLE_1M_CONTEXT = true;
 
 // ====================================
 // Prompt Caching Configuration

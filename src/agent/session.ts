@@ -16,7 +16,6 @@ import {
 	type SDKToolProgressMessage,
 	type SDKUserMessage,
 } from "@anthropic-ai/claude-agent-sdk";
-import { CONTEXT_WINDOW, ENABLE_1M_CONTEXT } from "./config.ts";
 import {
 	handleAssistantMessage,
 	handleCompactBoundary,
@@ -27,7 +26,6 @@ import {
 	SessionStatus,
 	type UsageData,
 } from "./types/index.ts";
-import { ContextUsageTracker } from "./utils/context-tracker.ts";
 
 /**
  * Run a single agent session using Claude Agent SDK directly.
@@ -65,12 +63,6 @@ export async function runAgentSession(
 	let sessionId: string | undefined;
 	let errorOccurred = false;
 	let errorMessage = "";
-
-	// Create context usage tracker for real-time progress display
-	const contextWindow = ENABLE_1M_CONTEXT
-		? CONTEXT_WINDOW.EXTENDED_1M
-		: CONTEXT_WINDOW.DEFAULT;
-	const contextTracker = new ContextUsageTracker(contextWindow);
 
 	try {
 		for await (const msg of q) {
@@ -120,11 +112,7 @@ export async function runAgentSession(
 					continue;
 				}
 
-				const result = handleAssistantMessage(
-					assistantMsg,
-					lastEventTime,
-					contextTracker,
-				);
+				const result = handleAssistantMessage(assistantMsg, lastEventTime);
 				responseText += result.text;
 				if (result.toolStartTime !== null) {
 					toolStartTime = result.toolStartTime;
@@ -134,36 +122,35 @@ export async function runAgentSession(
 			// Handle user messages (tool results)
 			else if (msgType === "user") {
 				const userMsg = msg as SDKUserMessage;
-				handleUserMessage(
-					userMsg,
-					toolStartTime,
-					lastEventTime,
-					contextTracker,
-				);
+				handleUserMessage(userMsg, toolStartTime, lastEventTime);
 				toolStartTime = null;
 			}
 
 			// Handle result message (final message with usage stats)
 			else if (msgType === "result") {
 				const resultMsg = msg as SDKResultMessage;
-				if (msg.usage) {
-					// Calculate context window usage
-					// Total processed input = input_tokens (new/uncached) + cache_read_input_tokens (cached)
-					const inputTokens = resultMsg.usage.input_tokens ?? 0;
-					const cacheReadTokens = resultMsg.usage.cache_read_input_tokens ?? 0;
-					const outputTokens = resultMsg.usage.output_tokens ?? 0;
-					const totalProcessedInput = inputTokens + cacheReadTokens;
-					const contextUsage = totalProcessedInput + outputTokens;
 
-					// Get context window size
-					const ctxWindow = ENABLE_1M_CONTEXT
-						? CONTEXT_WINDOW.EXTENDED_1M
-						: CONTEXT_WINDOW.DEFAULT;
-					const contextUsagePercent = (contextUsage / ctxWindow) * 100;
+				// Display context usage from modelUsage (accurate SDK data)
+				if (resultMsg.modelUsage) {
+					for (const [modelName, usage] of Object.entries(
+						resultMsg.modelUsage,
+					)) {
+						const totalTokens =
+							usage.inputTokens +
+							usage.outputTokens +
+							usage.cacheReadInputTokens +
+							usage.cacheCreationInputTokens;
+						const ctxWindow = usage.contextWindow;
+						const usagePercent =
+							ctxWindow > 0 ? (totalTokens / ctxWindow) * 100 : 0;
 
-					console.log(
-						`\n[Context Usage]: ${(contextUsage / 1000).toFixed(0)}K / ${(ctxWindow / 1000).toFixed(0)}K tokens (${contextUsagePercent.toFixed(1)}%)`,
-					);
+						console.log(
+							`\n[Context] ${modelName}: ${(totalTokens / 1000).toFixed(0)}K / ${(ctxWindow / 1000).toFixed(0)}K tokens (${usagePercent.toFixed(1)}%)`,
+						);
+						console.log(
+							`[Tokens] input: ${usage.inputTokens}, output: ${(usage.outputTokens / 1000).toFixed(1)}K, cache_read: ${(usage.cacheReadInputTokens / 1000).toFixed(0)}K, cache_write: ${(usage.cacheCreationInputTokens / 1000).toFixed(0)}K`,
+						);
+					}
 				}
 
 				// Check for errors in result
