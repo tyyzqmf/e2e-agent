@@ -15,7 +15,6 @@ import type {
 import { GetCallerIdentityCommand, STSClient } from "@aws-sdk/client-sts";
 import { fromNodeProviderChain } from "@aws-sdk/credential-providers";
 import {
-	CONTEXT_COMPRESSION_THRESHOLD,
 	CONTEXT_WINDOW,
 	ISOLATE_SESSION_CACHE,
 	MAX_TURNS,
@@ -346,11 +345,6 @@ export async function createSdkOptions(
 		...authConfig.envVars,
 	};
 
-	// Context window configuration (200K for AWS Bedrock)
-	const compressionThreshold = Math.floor(
-		CONTEXT_WINDOW * CONTEXT_COMPRESSION_THRESHOLD,
-	);
-
 	// Log session mode
 	if (resumeSessionId) {
 		console.log(
@@ -359,12 +353,6 @@ export async function createSdkOptions(
 	} else {
 		console.log("[Session] Starting new session");
 	}
-
-	console.log(
-		`[Context] Window: ${(CONTEXT_WINDOW / 1000).toFixed(0)}K tokens, ` +
-			`Auto-compaction at: ~${(compressionThreshold / 1000).toFixed(0)}K tokens ` +
-			`(${(CONTEXT_COMPRESSION_THRESHOLD * 100).toFixed(0)}%)`,
-	);
 
 	// Build SDK options
 	const options: SDKOptions = {

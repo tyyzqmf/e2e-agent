@@ -50,17 +50,6 @@ export const AUTO_CONTINUE_DELAY_MS = 3000;
  */
 export const CONTEXT_WINDOW = 1_000_000;
 
-/**
- * Context compression threshold percentage (display only)
- *
- * NOTE: The Claude Agent SDK handles compaction automatically when context
- * usage exceeds ~85-90% of the context window. This value is only used for
- * display purposes and token monitoring warnings.
- *
- * @see https://platform.claude.com/docs/en/build-with-claude/context-editing
- */
-export const CONTEXT_COMPRESSION_THRESHOLD = 0.85;
-
 // ====================================
 // Prompt Caching Configuration
 // ====================================

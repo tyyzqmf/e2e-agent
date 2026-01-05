@@ -36,7 +36,7 @@ import { sleep } from "./utils/index.ts";
  * Run the autonomous testing agent loop.
  *
  * @param options - Agent options
- * @returns Exit code: 0 for success, 1 for all tests blocked, 2 for other failures
+ * @returns Exit code: 0 for success, 1 for all tests blocked, 2 for idle loop detected
  */
 export async function runAutonomousTestingAgent(
 	options: AgentOptions,
@@ -88,12 +88,13 @@ export async function runAutonomousTestingAgent(
 	// Initialize progress tracker
 	const progressTracker = new ProgressTracker(projectDir);
 
-	// Session tracking for resume capability
-	let currentSessionId: string | undefined;
-
 	// Main loop
 	let iteration = 0;
 	let allTestsBlocked = false;
+	let idleLoopDetected = false;
+	let consecutiveNoProgress = 0;
+	const MAX_NO_PROGRESS_SESSIONS = 3;
+	let previousNotRunCount: number | null = null;
 
 	while (true) {
 		iteration++;
@@ -108,12 +109,12 @@ export async function runAutonomousTestingAgent(
 		// Print session header
 		printTestSessionHeader(iteration, isFirstRun);
 
-		// Create SDK options (with session resume support)
-		const shouldResume = !isFirstRun && currentSessionId !== undefined;
+		// Create SDK options (session resume DISABLED to ensure fresh context each session)
 		const { options: sdkOptions } = await createSdkOptions({
 			projectDir,
 			model,
-			resumeSessionId: shouldResume ? currentSessionId : undefined,
+			// resumeSessionId disabled: each session starts fresh to avoid inheriting
+			// incorrect "mission accomplished" state from previous sessions
 		});
 
 		// Choose prompt based on session type
@@ -131,25 +132,13 @@ export async function runAutonomousTestingAgent(
 		const abortController = new AbortController();
 
 		// Run session
-		const { result, sessionId } = await runAgentSession(
+		const { result } = await runAgentSession(
 			sdkOptions,
 			prompt,
 			abortController,
 		);
 
 		const { status, usageData } = result;
-
-		// Capture session ID only on success
-		if (status === SessionStatus.CONTINUE && sessionId) {
-			currentSessionId = sessionId;
-			console.log(
-				`[Session] Session ID captured for resume: ${currentSessionId.slice(0, 16)}...`,
-			);
-		} else {
-			console.log(
-				`[Session] Skipping session ID capture due to status: ${status}`,
-			);
-		}
 
 		// Give processes time to terminate gracefully
 		await sleep(500);
@@ -209,15 +198,64 @@ export async function runAutonomousTestingAgent(
 				break;
 			}
 
+			// Detect idle sessions (no progress made)
+			if (previousNotRunCount !== null) {
+				if (stats.notRun === previousNotRunCount) {
+					consecutiveNoProgress++;
+					console.log(
+						`\n[Warning] No progress made this session (${consecutiveNoProgress}/${MAX_NO_PROGRESS_SESSIONS} idle sessions)`,
+					);
+
+					if (consecutiveNoProgress >= MAX_NO_PROGRESS_SESSIONS) {
+						idleLoopDetected = true;
+						console.log(`\n${"=".repeat(70)}`);
+						console.log("  IDLE LOOP DETECTED!");
+						console.log("=".repeat(70));
+						console.log(
+							`\n  ${MAX_NO_PROGRESS_SESSIONS} consecutive sessions with no test progress.`,
+						);
+						console.log(`  Remaining "Not Run" tests: ${stats.notRun}`);
+						console.log(
+							"\n  Possible causes:",
+						);
+						console.log(
+							'    - Agent may be stuck due to "MISSION ACCOMPLISHED" in claude-progress.txt',
+						);
+						console.log(
+							"    - Blocking defects preventing test execution",
+						);
+						console.log(
+							"    - Environment issues preventing browser automation",
+						);
+						console.log(
+							"\n  Recommended actions:",
+						);
+						console.log(
+							"    1. Review claude-progress.txt and remove premature completion claims",
+						);
+						console.log(
+							"    2. Check test_cases.json for remaining Not Run tests",
+						);
+						console.log(
+							"    3. Restart the agent after addressing issues",
+						);
+						console.log("=".repeat(70));
+						break;
+					}
+				} else {
+					// Progress was made, reset counter
+					consecutiveNoProgress = 0;
+				}
+			}
+			previousNotRunCount = stats.notRun;
+
 			await sleep(AUTO_CONTINUE_DELAY_MS);
 		} else if (status === SessionStatus.CONTEXT_OVERFLOW) {
 			console.log("\n[Context Overflow Recovery] Starting fresh session");
-			currentSessionId = undefined;
 			await sleep(AUTO_CONTINUE_DELAY_MS);
 		} else if (status === SessionStatus.ERROR) {
 			console.log("\nSession encountered an error");
 			console.log("Will retry with a fresh session...");
-			currentSessionId = undefined;
 			await sleep(AUTO_CONTINUE_DELAY_MS);
 		}
 
@@ -279,5 +317,9 @@ export async function runAutonomousTestingAgent(
 
 	console.log("\nDone!");
 
+	// Exit codes: 0 = success, 1 = all tests blocked, 2 = idle loop detected
+	if (idleLoopDetected) {
+		return 2;
+	}
 	return allTestsBlocked ? 1 : 0;
 }

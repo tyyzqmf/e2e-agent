@@ -34,10 +34,18 @@ pwd && ls -la
 
 **1.2 Read project files:**
 1. `Read(file_path="./test_spec.txt")` - Application specification
-2. `Read(file_path="./test_cases.json")` - Test cases and status
+2. `Read(file_path="./test_cases.json")` - Test cases and status **(SOURCE OF TRUTH for completion)**
 3. `Read(file_path="./claude-progress.txt")` - Session history, blocking defects, known issues
 4. `Read(file_path="./test_env.json")` - Environment configuration
 5. `Read(file_path="./usage_statistics.json")` - Usage stats for efficiency tracking
+
+**⚠️ CRITICAL: IGNORE COMPLETION CLAIMS IN claude-progress.txt**
+
+Previous sessions may have incorrectly declared "MISSION ACCOMPLISHED", "COMPLETE", or "PRODUCTION READY" while tests remain unexecuted. **ALWAYS determine completion status from `test_cases.json`**, NOT from `claude-progress.txt`.
+
+- If `test_cases.json` contains ANY test with `"status": "Not Run"`, tests are NOT complete
+- Continue executing tests regardless of what `claude-progress.txt` says
+- The agent loop will only stop when ALL tests in `test_cases.json` have a status other than "Not Run"
 
 **1.3 Get test statistics:**
 ```bash
@@ -340,6 +348,12 @@ Update `claude-progress.txt` with:
 - What should be tested next
 - Completion status (e.g., "8/10 tests completed, 6 Pass, 2 Fail")
 
+**⚠️ DO NOT prematurely declare completion:**
+- NEVER write "MISSION ACCOMPLISHED", "COMPLETE", or "PRODUCTION READY" unless ALL tests have been executed
+- Check `test_cases.json` - if ANY test has `"status": "Not Run"`, work is NOT complete
+- Use accurate language: "Session complete" (this session), NOT "Testing complete" (all testing)
+- Always list remaining "Not Run" tests that need execution in future sessions
+
 ---
 
 ### STEP 9: GENERATE REPORTS AND END SESSION
@@ -350,6 +364,12 @@ Update `claude-progress.txt` with:
 python3 utils/json_helper.py count "Not Run"
 # If result is 0, all tests completed - generate final reports
 ```
+
+**⚠️ CRITICAL: Only declare completion when `count "Not Run"` returns 0**
+
+- If count > 0, there are still tests to execute in future sessions
+- Do NOT generate final reports or declare "MISSION ACCOMPLISHED" with tests remaining
+- Continue to next session - the agent loop will automatically continue
 
 **Generate reports when:**
 1. All test cases completed (no "Not Run" remaining) - PRIMARY
