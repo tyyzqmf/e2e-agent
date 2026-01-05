@@ -38,8 +38,12 @@ google-chrome --version
 
 **Option 1 - AWS Bedrock (Recommended):**
 ```bash
-export USE_AWS_BEDROCK=true
+export CLAUDE_CODE_USE_BEDROCK=1
 export AWS_REGION=us-west-2
+
+# Recommended output token settings for Bedrock
+export CLAUDE_CODE_MAX_OUTPUT_TOKENS=4096
+export MAX_THINKING_TOKENS=1024
 
 # Configure AWS credentials
 aws configure
@@ -318,7 +322,7 @@ Edit `src/agent/prompts/test_planner_prompt.md` and change the test case count (
 
 **"AWS credentials not found"**
 ```bash
-export USE_AWS_BEDROCK=true
+export CLAUDE_CODE_USE_BEDROCK=1
 export AWS_REGION=us-west-2
 aws configure  # Or set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
 ```

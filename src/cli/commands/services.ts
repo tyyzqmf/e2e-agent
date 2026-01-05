@@ -57,7 +57,7 @@ export async function startExecutor(): Promise<boolean> {
 			stdin: "ignore",
 			env: {
 				...process.env,
-				USE_AWS_BEDROCK: process.env.USE_AWS_BEDROCK ?? "true",
+				CLAUDE_CODE_USE_BEDROCK: process.env.CLAUDE_CODE_USE_BEDROCK ?? "1",
 				AWS_REGION: process.env.AWS_REGION ?? "us-west-2",
 			},
 		});
@@ -201,7 +201,7 @@ export async function startAll(): Promise<void> {
 
 	console.log("");
 	console.log("AWS Bedrock Configuration:");
-	console.log(`  USE_AWS_BEDROCK=${process.env.USE_AWS_BEDROCK}`);
+	console.log(`  CLAUDE_CODE_USE_BEDROCK=${process.env.CLAUDE_CODE_USE_BEDROCK}`);
 	console.log(`  AWS_REGION=${process.env.AWS_REGION}`);
 	console.log("");
 

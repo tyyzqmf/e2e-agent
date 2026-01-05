@@ -81,7 +81,7 @@ Examples:
   e2e log web                   # Follow web service logs
 
 Environment Variables:
-  USE_AWS_BEDROCK          Enable AWS Bedrock (default: true)
+  CLAUDE_CODE_USE_BEDROCK  Enable AWS Bedrock (set to 1)
   AWS_REGION               AWS region (default: us-west-2)
   PORT                     Web service port (default: 3000)
   HOST                     Web service host (default: 0.0.0.0)

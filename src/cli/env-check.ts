@@ -260,11 +260,8 @@ export async function setupEnvironment(verbose: boolean = true): Promise<void> {
 	// Create directories
 	await $`mkdir -p data/reports logs generations`.quiet();
 
-	// Set AWS Bedrock environment variables
-	process.env.USE_AWS_BEDROCK = process.env.USE_AWS_BEDROCK ?? "true";
+	// Set AWS Bedrock environment variables (using official CLAUDE_CODE_USE_BEDROCK)
+	process.env.CLAUDE_CODE_USE_BEDROCK =
+		process.env.CLAUDE_CODE_USE_BEDROCK ?? "1";
 	process.env.AWS_REGION = process.env.AWS_REGION ?? "us-west-2";
-
-	if (process.env.USE_AWS_BEDROCK === "true") {
-		process.env.CLAUDE_CODE_USE_BEDROCK = "1";
-	}
 }

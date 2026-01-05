@@ -887,35 +887,10 @@
         }
 
         .logs-status {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
             margin-top: 12px;
             font-size: 10px;
             color: var(--col-ink);
             opacity: 0.6;
-        }
-
-        .logs-status .auto-refresh-indicator {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .logs-status .auto-refresh-indicator.active {
-            color: var(--col-success);
-            opacity: 1;
-        }
-
-        .logs-status .auto-refresh-indicator .dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: currentColor;
-        }
-
-        .logs-status .auto-refresh-indicator.active .dot {
-            animation: pulse 1.5s ease-in-out infinite;
         }
 
         /* Test Cases Detail Panel */
@@ -1378,6 +1353,10 @@
                             </select>
                         </div>
                         <div class="logs-control-group">
+                            <input type="checkbox" id="logsAutoRefreshCheckbox" checked onchange="toggleLogsAutoRefresh()">
+                            <label for="logsAutoRefreshCheckbox">Auto-refresh</label>
+                        </div>
+                        <div class="logs-control-group">
                             <input type="checkbox" id="logsAutoScroll" checked>
                             <label for="logsAutoScroll">Auto-scroll</label>
                         </div>
@@ -1389,10 +1368,6 @@
                 </div>
                 <div class="logs-status">
                     <span id="logsLastUpdated">-</span>
-                    <span id="logsAutoRefreshIndicator" class="auto-refresh-indicator">
-                        <span class="dot"></span>
-                        <span>Auto-refresh off</span>
-                    </span>
                 </div>
             </div>
             </div><!-- End Logs Tab -->
@@ -1762,16 +1737,22 @@
 
                 // Escape HTML and display logs
                 const escapedContent = escapeHtml(result.content || '');
+
+                // Save scroll position before replacing content
+                const autoScroll = document.getElementById('logsAutoScroll');
+                const savedScrollTop = logsContent.scrollTop;
+
                 logsContent.innerHTML = escapedContent || '<div class="logs-empty">Log file is empty</div>';
 
                 // Update timestamp
                 const now = new Date();
                 logsLastUpdated.textContent = `Last updated: ${now.toLocaleTimeString()}`;
 
-                // Auto-scroll to bottom if enabled
-                const autoScroll = document.getElementById('logsAutoScroll');
+                // Auto-scroll to bottom if enabled, otherwise restore saved position
                 if (autoScroll?.checked) {
                     logsContent.scrollTop = logsContent.scrollHeight;
+                } else {
+                    logsContent.scrollTop = savedScrollTop;
                 }
 
             } catch (error) {
@@ -1786,9 +1767,9 @@
         }
 
         function startLogsAutoRefresh() {
-            if (!logsAutoRefresh) {
+            const checkbox = document.getElementById('logsAutoRefreshCheckbox');
+            if (!logsAutoRefresh && checkbox?.checked) {
                 logsAutoRefresh = setInterval(loadLogs, 3000);
-                updateLogsAutoRefreshIndicator(true);
             }
         }
 
@@ -1797,19 +1778,14 @@
                 clearInterval(logsAutoRefresh);
                 logsAutoRefresh = null;
             }
-            updateLogsAutoRefreshIndicator(false);
         }
 
-        function updateLogsAutoRefreshIndicator(active) {
-            const indicator = document.getElementById('logsAutoRefreshIndicator');
-            if (indicator) {
-                if (active) {
-                    indicator.className = 'auto-refresh-indicator active';
-                    indicator.querySelector('span:last-child').textContent = 'Auto-refresh on (3s)';
-                } else {
-                    indicator.className = 'auto-refresh-indicator';
-                    indicator.querySelector('span:last-child').textContent = 'Auto-refresh off';
-                }
+        function toggleLogsAutoRefresh() {
+            const checkbox = document.getElementById('logsAutoRefreshCheckbox');
+            if (checkbox?.checked) {
+                startLogsAutoRefresh();
+            } else {
+                stopLogsAutoRefresh();
             }
         }
 

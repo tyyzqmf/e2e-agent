@@ -20,7 +20,6 @@ import {
 	DEFAULT_MODEL,
 	DEFAULT_PROJECT_DIR,
 	GENERATIONS_DIR,
-	isBedrockEnabled,
 	normalizeProjectPath,
 } from "./config.ts";
 
@@ -30,20 +29,16 @@ import {
 
 /**
  * Check if AWS Bedrock configuration is valid.
+ * Uses CLAUDE_CODE_USE_BEDROCK environment variable (official Claude Code env var)
  */
 function checkAwsBedrockConfig(): boolean {
-	const useBedrock = isBedrockEnabled(process.env.USE_AWS_BEDROCK);
-	if (!useBedrock) {
-		return false;
-	}
-
 	const awsRegion = process.env.AWS_REGION ?? process.env.AWS_DEFAULT_REGION;
 	if (!awsRegion) {
 		console.error(
 			"Error: AWS_REGION or AWS_DEFAULT_REGION environment variable not set",
 		);
 		console.error("\nTo use AWS Bedrock, set:");
-		console.error("  export USE_AWS_BEDROCK=true");
+		console.error("  export CLAUDE_CODE_USE_BEDROCK=1");
 		console.error("  export AWS_REGION=us-east-1  # or your preferred region");
 		console.error("\nAnd configure AWS credentials using:");
 		console.error("  aws configure");
@@ -68,7 +63,7 @@ function checkAnthropicApiKey(): boolean {
 	console.error("\nThen set it:");
 	console.error("  export ANTHROPIC_API_KEY='your-api-key-here'");
 	console.error("\nAlternatively, to use AWS Bedrock:");
-	console.error("  export USE_AWS_BEDROCK=true");
+	console.error("  export CLAUDE_CODE_USE_BEDROCK=1");
 	console.error("  export AWS_REGION=us-east-1");
 	return false;
 }
@@ -111,11 +106,11 @@ Examples:
 
 Environment Variables:
   Option 1 - Anthropic API:
-    ANTHROPIC_API_KEY    Your Anthropic API key
+    ANTHROPIC_API_KEY         Your Anthropic API key
 
   Option 2 - AWS Bedrock:
-    USE_AWS_BEDROCK=true Set to use AWS Bedrock
-    AWS_REGION           AWS region (e.g., us-east-1, us-west-2)
+    CLAUDE_CODE_USE_BEDROCK=1 Set to use AWS Bedrock
+    AWS_REGION                AWS region (e.g., us-east-1, us-west-2)
     AWS credentials configured via AWS CLI or environment variables
 `);
 }
@@ -170,7 +165,7 @@ async function main(): Promise<void> {
 	}
 
 	// Validate API credentials (AWS Bedrock or Anthropic API)
-	const useBedrock = isBedrockEnabled(process.env.USE_AWS_BEDROCK);
+	const useBedrock = process.env.CLAUDE_CODE_USE_BEDROCK === "1";
 
 	if (useBedrock) {
 		if (!checkAwsBedrockConfig()) {

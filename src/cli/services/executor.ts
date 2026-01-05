@@ -169,16 +169,12 @@ export class TestExecutor {
 
 			// Prepare environment - ensure AWS Bedrock settings are passed
 			const env = { ...process.env };
-			// Set defaults for AWS Bedrock if not already set
-			if (!env.USE_AWS_BEDROCK) {
-				env.USE_AWS_BEDROCK = "true";
+			// Set defaults for AWS Bedrock if not already set (using official CLAUDE_CODE_USE_BEDROCK)
+			if (!env.CLAUDE_CODE_USE_BEDROCK) {
+				env.CLAUDE_CODE_USE_BEDROCK = "1";
 			}
 			if (!env.AWS_REGION) {
 				env.AWS_REGION = "us-west-2";
-			}
-			// Also handle CLAUDE_CODE_USE_BEDROCK flag
-			if (env.CLAUDE_CODE_USE_BEDROCK === "1") {
-				env.USE_AWS_BEDROCK = "true";
 			}
 
 			// Setup log files

@@ -188,9 +188,12 @@ generations/
 
 ### Using AWS Bedrock (Default)
 ```bash
-export USE_AWS_BEDROCK=true
-export AWS_REGION=us-west-2
 export CLAUDE_CODE_USE_BEDROCK=1
+export AWS_REGION=us-west-2
+
+# Recommended output token settings for Bedrock
+export CLAUDE_CODE_MAX_OUTPUT_TOKENS=4096
+export MAX_THINKING_TOKENS=1024
 
 # AWS credentials via CLI
 aws configure

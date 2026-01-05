@@ -32,11 +32,6 @@ export const GENERATIONS_DIR = "generations";
 export const SETTINGS_FILENAME = ".claude_settings.json";
 
 /**
- * Environment variable values that enable AWS Bedrock
- */
-export const BEDROCK_ENV_VALUES = ["true", "1", "yes"] as const;
-
-/**
  * Maximum number of agent turns per session
  */
 export const MAX_TURNS = 100;
@@ -175,16 +170,6 @@ export interface ClientOptions {
 	loadDefaultSkills?: boolean;
 	/** Session ID to resume (for session continuity) */
 	resumeSessionId?: string;
-}
-
-/**
- * Check if a value indicates AWS Bedrock should be used
- */
-export function isBedrockEnabled(value: string | undefined): boolean {
-	if (!value) return false;
-	return BEDROCK_ENV_VALUES.includes(
-		value.toLowerCase() as (typeof BEDROCK_ENV_VALUES)[number],
-	);
 }
 
 /**

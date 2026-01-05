@@ -15,7 +15,6 @@ import type {
 import { GetCallerIdentityCommand, STSClient } from "@aws-sdk/client-sts";
 import { fromNodeProviderChain } from "@aws-sdk/credential-providers";
 import {
-	BEDROCK_ENV_VALUES,
 	CONTEXT_COMPRESSION_THRESHOLD,
 	CONTEXT_WINDOW,
 	ISOLATE_SESSION_CACHE,
@@ -111,13 +110,10 @@ async function validateAwsCredentials(): Promise<void> {
 
 /**
  * Configure authentication for AWS Bedrock or Anthropic API
+ * Uses CLAUDE_CODE_USE_BEDROCK environment variable (official Claude Code env var)
  */
 export async function configureAuthentication(): Promise<AuthConfig> {
-	const useBedrock = BEDROCK_ENV_VALUES.includes(
-		(
-			process.env.USE_AWS_BEDROCK ?? ""
-		).toLowerCase() as (typeof BEDROCK_ENV_VALUES)[number],
-	);
+	const useBedrock = process.env.CLAUDE_CODE_USE_BEDROCK === "1";
 
 	if (useBedrock) {
 		const awsRegion = getAwsRegion();
@@ -140,7 +136,7 @@ export async function configureAuthentication(): Promise<AuthConfig> {
 		throw new Error(
 			"ANTHROPIC_API_KEY environment variable not set.\n" +
 				"Get your API key from: https://console.anthropic.com/\n" +
-				"Or set USE_AWS_BEDROCK=true to use AWS Bedrock instead.",
+				"Or set CLAUDE_CODE_USE_BEDROCK=1 to use AWS Bedrock instead.",
 		);
 	}
 

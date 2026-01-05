@@ -6,12 +6,10 @@ import { describe, expect, test } from "bun:test";
 import {
 	AGENT_PATHS,
 	AUTO_CONTINUE_DELAY_MS,
-	BEDROCK_ENV_VALUES,
 	DEFAULT_MODEL,
 	DEFAULT_PROJECT_DIR,
 	DEFAULT_SYSTEM_PROMPT,
 	GENERATIONS_DIR,
-	isBedrockEnabled,
 	MAX_TURNS,
 	normalizeProjectPath,
 	SETTINGS_FILENAME,
@@ -33,12 +31,6 @@ describe("Agent Configuration Constants", () => {
 
 	test("SETTINGS_FILENAME is defined", () => {
 		expect(SETTINGS_FILENAME).toBe(".claude_settings.json");
-	});
-
-	test("BEDROCK_ENV_VALUES contains expected values", () => {
-		expect(BEDROCK_ENV_VALUES).toContain("true");
-		expect(BEDROCK_ENV_VALUES).toContain("1");
-		expect(BEDROCK_ENV_VALUES).toContain("yes");
 	});
 
 	test("MAX_TURNS is a reasonable number", () => {
@@ -71,50 +63,6 @@ describe("Agent Configuration Constants", () => {
 		expect(AGENT_PATHS.templatesDir).toContain(AGENT_PATHS.moduleDir);
 		expect(AGENT_PATHS.utilsDir).toContain(AGENT_PATHS.moduleDir);
 		expect(AGENT_PATHS.pluginsDir).toContain(AGENT_PATHS.moduleDir);
-	});
-});
-
-describe("isBedrockEnabled", () => {
-	test("returns false for undefined", () => {
-		expect(isBedrockEnabled(undefined)).toBe(false);
-	});
-
-	test("returns false for empty string", () => {
-		expect(isBedrockEnabled("")).toBe(false);
-	});
-
-	test("returns true for 'true'", () => {
-		expect(isBedrockEnabled("true")).toBe(true);
-		expect(isBedrockEnabled("TRUE")).toBe(true);
-		expect(isBedrockEnabled("True")).toBe(true);
-	});
-
-	test("returns true for '1'", () => {
-		expect(isBedrockEnabled("1")).toBe(true);
-	});
-
-	test("returns true for 'yes'", () => {
-		expect(isBedrockEnabled("yes")).toBe(true);
-		expect(isBedrockEnabled("YES")).toBe(true);
-		expect(isBedrockEnabled("Yes")).toBe(true);
-	});
-
-	test("returns false for 'false'", () => {
-		expect(isBedrockEnabled("false")).toBe(false);
-	});
-
-	test("returns false for '0'", () => {
-		expect(isBedrockEnabled("0")).toBe(false);
-	});
-
-	test("returns false for 'no'", () => {
-		expect(isBedrockEnabled("no")).toBe(false);
-	});
-
-	test("returns false for random strings", () => {
-		expect(isBedrockEnabled("random")).toBe(false);
-		expect(isBedrockEnabled("enabled")).toBe(false);
-		expect(isBedrockEnabled("on")).toBe(false);
 	});
 });
 

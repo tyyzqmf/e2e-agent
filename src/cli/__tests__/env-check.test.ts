@@ -434,15 +434,14 @@ describe("Environment Check", () => {
 		});
 
 		test("sets AWS environment variables", async () => {
-			const originalUseAws = process.env.USE_AWS_BEDROCK;
-			const originalRegion = process.env.AWS_REGION;
 			const originalBedrock = process.env.CLAUDE_CODE_USE_BEDROCK;
+			const originalRegion = process.env.AWS_REGION;
 
 			try {
 				await setupEnvironment(false);
 
 				// After setup, these should be set
-				expect(process.env.USE_AWS_BEDROCK).toBeDefined();
+				expect(process.env.CLAUDE_CODE_USE_BEDROCK).toBeDefined();
 				expect(process.env.AWS_REGION).toBeDefined();
 			} catch (e: unknown) {
 				const error = e as Error;
@@ -451,14 +450,11 @@ describe("Environment Check", () => {
 				}
 			} finally {
 				// Restore original values
-				if (originalUseAws !== undefined) {
-					process.env.USE_AWS_BEDROCK = originalUseAws;
+				if (originalBedrock !== undefined) {
+					process.env.CLAUDE_CODE_USE_BEDROCK = originalBedrock;
 				}
 				if (originalRegion !== undefined) {
 					process.env.AWS_REGION = originalRegion;
-				}
-				if (originalBedrock !== undefined) {
-					process.env.CLAUDE_CODE_USE_BEDROCK = originalBedrock;
 				}
 			}
 		});
@@ -719,29 +715,6 @@ describe("Environment Check", () => {
 			consoleSpy.mockRestore();
 			stdoutSpy.mockRestore();
 			exitSpy.mockRestore();
-		});
-
-		test("setupEnvironment sets CLAUDE_CODE_USE_BEDROCK when USE_AWS_BEDROCK is true", async () => {
-			const originalUseAws = process.env.USE_AWS_BEDROCK;
-			const originalBedrock = process.env.CLAUDE_CODE_USE_BEDROCK;
-			const originalRegion = process.env.AWS_REGION;
-
-			process.env.USE_AWS_BEDROCK = "true";
-
-			try {
-				await setupEnvironment(false);
-				expect(process.env.CLAUDE_CODE_USE_BEDROCK).toBe("1");
-			} catch {
-				// May exit due to missing deps
-			} finally {
-				// Restore
-				if (originalUseAws !== undefined)
-					process.env.USE_AWS_BEDROCK = originalUseAws;
-				if (originalBedrock !== undefined)
-					process.env.CLAUDE_CODE_USE_BEDROCK = originalBedrock;
-				if (originalRegion !== undefined)
-					process.env.AWS_REGION = originalRegion;
-			}
 		});
 
 		test("setupEnvironment creates directories", async () => {
