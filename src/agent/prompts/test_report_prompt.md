@@ -84,7 +84,7 @@ If no existing directory, create one with current timestamp.
 
 ### STEP 3: CONSOLIDATE EVIDENCE (MANDATORY)
 
-Screenshots and logs may be scattered across multiple session directories. Consolidate them before generating reports.
+Screenshots, DOM snapshots, and logs may be scattered across multiple session directories. Consolidate them before generating reports.
 
 **3.1 Find all session directories**
 ```bash
@@ -104,7 +104,20 @@ for dir in test-reports/20*/screenshots; do
 done
 ```
 
-**3.3 Consolidate logs**
+**3.3 Consolidate snapshots**
+```bash
+# Create snapshots directory in latest report
+mkdir -p test-reports/{timestamp}/snapshots
+
+# Copy all DOM snapshots from all sessions
+for dir in test-reports/20*/snapshots; do
+    if [ -d "$dir" ]; then
+        cp -n "$dir"/*.txt test-reports/{timestamp}/snapshots/ 2>/dev/null || true
+    fi
+done
+```
+
+**3.4 Consolidate logs**
 ```bash
 # Create logs directory in latest report
 mkdir -p test-reports/{timestamp}/logs
@@ -117,9 +130,10 @@ for dir in test-reports/20*/logs; do
 done
 ```
 
-**3.4 Verify consolidation**
+**3.5 Verify consolidation**
 ```bash
 ls -la test-reports/{timestamp}/screenshots/
+ls -la test-reports/{timestamp}/snapshots/
 ls -la test-reports/{timestamp}/logs/
 ```
 
@@ -181,10 +195,10 @@ This is the main deliverable.
 - Related Documents: Links to `test-summary-report.md` and other logs
 
 **Image/File Paths:**
-- Use relative paths from HTML location: `screenshots/01_TC-001_page.png`
+- Use relative paths from HTML location: `screenshots/01_TC-001_login_page.png`
 - Ensure all screenshots are in the same `screenshots/` directory
-- Use relative paths from HTML location: `logs/TC-001_page_snapshot.txt`
-- Ensure all snapshots are in the same `logs/` directory
+- Use relative paths from HTML location: `snapshots/01_TC-001_login_page.txt`
+- Ensure all DOM snapshots are in the same `snapshots/` directory
 
 ---
 

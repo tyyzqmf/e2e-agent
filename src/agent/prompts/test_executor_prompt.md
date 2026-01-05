@@ -176,10 +176,12 @@ Selected Test: TC-XXX
 
 **ALWAYS use `filePath` with `take_snapshot`** - Without it, full DOM (~50K tokens) floods context and crashes session.
 
+**Save snapshots to `test-reports/{timestamp}/snapshots/` directory** (same level as `screenshots/`).
+
 ```python
-# CORRECT (~100 tokens)
-take_snapshot(filePath="./snapshot.txt")
-grep("button|login", path="./snapshot.txt")  # Search for UIDs
+# CORRECT (~100 tokens) - Save to snapshots directory
+take_snapshot(filePath="test-reports/{timestamp}/snapshots/01_TC-001_login_page.txt")
+grep("button|login", path="test-reports/{timestamp}/snapshots/01_TC-001_login_page.txt")  # Search for UIDs
 
 # WRONG (~50,000 tokens) - NEVER DO THIS!
 take_snapshot()
@@ -187,11 +189,11 @@ take_snapshot()
 
 **Workflow:**
 ```
-1. take_screenshot(filePath="screenshots/01.png")    # Evidence
-2. take_snapshot(filePath="./snapshot.txt")          # Save DOM to file
-3. grep("button|input", path="./snapshot.txt")       # Find UIDs
+1. take_screenshot(filePath="test-reports/{timestamp}/screenshots/01_TC-001_login_page.png")    # Evidence
+2. take_snapshot(filePath="test-reports/{timestamp}/snapshots/01_TC-001_login_page.txt")        # Save DOM to file
+3. grep("button|input", path="test-reports/{timestamp}/snapshots/01_TC-001_login_page.txt")     # Find UIDs
 4. click(uid="..."), fill(uid="...")                 # Use UIDs
-5. take_screenshot(filePath="screenshots/02.png")    # Verify
+5. take_screenshot(filePath="test-reports/{timestamp}/screenshots/02_TC-001_dashboard.png")     # Verify
 ```
 
 **"Input is too long" error?** End session gracefully - progress saved in `test_cases.json`
@@ -217,7 +219,7 @@ for attempt in range(15):
 
 # 4. Switch to new tab
 select_page(pageIdx=1)
-take_snapshot(filePath="./snapshot.txt")  # Verify correct tab
+take_snapshot(filePath="test-reports/{timestamp}/snapshots/04_TC-001_tab1_new_page.txt")  # Verify correct tab
 
 # 5. Work in new tab, take screenshots
 # ...
@@ -227,9 +229,10 @@ select_page(pageIdx=0)
 close_page(pageIdx=1)
 ```
 
-**Multi-Tab Screenshot Naming:**
-- `{step}_{case_id}_tab{idx}_{description}.png`
-- Example: `05_TC-3.2_tab1_jupyter_opened.png`
+**Multi-Tab Naming (Screenshots & Snapshots):**
+- Screenshots: `{step}_{case_id}_tab{idx}_{description}.png`
+- Snapshots: `{step}_{case_id}_tab{idx}_{description}.txt`
+- Example: `05_TC-3.2_tab1_jupyter_opened.png`, `05_TC-3.2_tab1_jupyter_opened.txt`
 
 **4.5 Best Practices**
 
@@ -257,11 +260,18 @@ close_page(pageIdx=1)
 | Type | Location | Naming |
 |------|----------|--------|
 | Screenshots | `screenshots/` | `{step}_{case_id}_{description}.png` |
+| DOM Snapshots | `snapshots/` | `{step}_{case_id}_{description}.txt` |
 | API Logs | `logs/` | `api_error_{case_id}_{description}.json` |
 | Console Logs | `logs/` | `console_{case_id}.log` |
 
+**Create directories at session start:**
+```bash
+mkdir -p test-reports/{timestamp}/screenshots test-reports/{timestamp}/snapshots test-reports/{timestamp}/logs
+```
+
 **For multi-tab tests:**
-- Include tab index: `{step}_{case_id}_tab{idx}_{description}.png`
+- Screenshots: `{step}_{case_id}_tab{idx}_{description}.png`
+- Snapshots: `{step}_{case_id}_tab{idx}_{description}.txt`
 
 **Capture on errors:**
 - Use `list_network_requests` → `get_network_request` for failed API calls
