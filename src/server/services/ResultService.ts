@@ -121,9 +121,10 @@ export class ResultService {
 
 			if (exitCode !== 0) {
 				const stderrStream = proc.stderr;
-				const stderr = stderrStream instanceof ReadableStream
-					? await new Response(stderrStream).text()
-					: "Unknown error";
+				const stderr =
+					stderrStream instanceof ReadableStream
+						? await new Response(stderrStream).text()
+						: "Unknown error";
 				logger.error(`ZIP creation failed for job ${jobId}`, stderr);
 				return null;
 			}

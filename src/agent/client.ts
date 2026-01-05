@@ -15,7 +15,6 @@ import type {
 import { GetCallerIdentityCommand, STSClient } from "@aws-sdk/client-sts";
 import { fromNodeProviderChain } from "@aws-sdk/credential-providers";
 import {
-	CONTEXT_WINDOW,
 	ISOLATE_SESSION_CACHE,
 	MAX_TURNS,
 	MIN_CACHEABLE_TOKENS,

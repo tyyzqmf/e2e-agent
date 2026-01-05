@@ -43,7 +43,7 @@ export interface TokenCounts {
 export interface SessionRecord {
 	sessionId: string;
 	timestamp: string;
-	sessionType: "test_planner" | "test_executor";
+	sessionType: "test_planner" | "test_executor" | "test_report";
 	model: string;
 	durationMs: number;
 	numTurns: number;

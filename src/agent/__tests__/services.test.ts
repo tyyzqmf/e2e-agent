@@ -28,6 +28,7 @@ import {
 	copyUtilsToProject,
 	getTestExecutorPrompt,
 	getTestPlannerPrompt,
+	getTestReportPrompt,
 	loadPrompt,
 	PROMPTS_DIR,
 	ROOT_DIR,
@@ -37,10 +38,7 @@ import {
 	validateDestName,
 	validateProjectDirectory,
 } from "../services/prompts.ts";
-import {
-	CostReportGenerator,
-	TokenUsageTracker,
-} from "../services/token-usage.ts";
+import { TokenUsageTracker } from "../services/token-usage.ts";
 
 // Create a temp directory for tests
 const testDir = join(tmpdir(), `e2e-agent-test-${Date.now()}`);
@@ -391,89 +389,6 @@ describe("Token Usage Service", () => {
 		expect(summary.totalInputTokens).toBe(5000);
 	});
 
-	test("CostReportGenerator generates markdown report", () => {
-		const tracker = new TokenUsageTracker(testDir);
-
-		tracker.recordSession({
-			sessionId: "session-1",
-			sessionType: "test_planner",
-			model: "claude-sonnet-4-5-20250929",
-			durationMs: 60000,
-			numTurns: 5,
-			tokens: {
-				inputTokens: 10000,
-				outputTokens: 5000,
-			},
-		});
-
-		const generator = new CostReportGenerator(tracker);
-		const report = generator.generateMarkdownReport();
-
-		expect(report).toContain("# Cost Statistics Report");
-		expect(report).toContain("## Executive Summary");
-		expect(report).toContain("## Token Usage Breakdown");
-		expect(report).toContain("## Session Details");
-		expect(report).toContain("Planner");
-	});
-
-	test("CostReportGenerator generates recommendations for cache efficiency", () => {
-		const tracker = new TokenUsageTracker(testDir);
-
-		tracker.recordSession({
-			sessionId: "session-1",
-			sessionType: "test_executor",
-			model: "claude-sonnet-4-5-20250929",
-			durationMs: 60000,
-			numTurns: 5,
-			tokens: {
-				inputTokens: 10000,
-				outputTokens: 5000,
-				cacheCreationTokens: 1000,
-				cacheReadTokens: 5000,
-			},
-		});
-
-		const generator = new CostReportGenerator(tracker);
-		const report = generator.generateMarkdownReport();
-
-		expect(report).toContain("## Cost Optimization Recommendations");
-		expect(report).toContain("Prompt Caching Efficiency");
-	});
-
-	test("CostReportGenerator generates recommendations for multiple sessions", () => {
-		const tracker = new TokenUsageTracker(testDir);
-
-		// Add multiple sessions
-		tracker.recordSession({
-			sessionId: "session-1",
-			sessionType: "test_planner",
-			model: "claude-sonnet-4-5-20250929",
-			durationMs: 30000,
-			numTurns: 3,
-			tokens: {
-				inputTokens: 5000,
-				outputTokens: 15000, // High output
-			},
-		});
-
-		tracker.recordSession({
-			sessionId: "session-2",
-			sessionType: "test_executor",
-			model: "claude-sonnet-4-5-20250929",
-			durationMs: 45000,
-			numTurns: 4,
-			tokens: {
-				inputTokens: 3000,
-				outputTokens: 20000, // High output
-			},
-		});
-
-		const generator = new CostReportGenerator(tracker);
-		const report = generator.generateMarkdownReport();
-
-		expect(report).toContain("Session Duration");
-	});
-
 	test("TokenUsageTracker.displaySessionStats outputs formatted stats", () => {
 		const tracker = new TokenUsageTracker(testDir);
 		const consoleLogs: string[] = [];
@@ -595,6 +510,13 @@ describe("Prompts Service - Extended", () => {
 		const content = await getTestExecutorPrompt();
 		expect(content).toBeDefined();
 		expect(content.length).toBeGreaterThan(0);
+	});
+
+	test("getTestReportPrompt returns prompt content", async () => {
+		const content = await getTestReportPrompt();
+		expect(content).toBeDefined();
+		expect(content.length).toBeGreaterThan(0);
+		expect(content).toContain("TEST REPORT AGENT");
 	});
 
 	test("copyToProject copies file to destination", () => {
@@ -1099,29 +1021,5 @@ describe("Token Usage Service - Extended", () => {
 		expect(logs.some((log) => log.includes("Could not load statistics"))).toBe(
 			true,
 		);
-	});
-
-	test("CostReportGenerator generates output optimization recommendation", () => {
-		const tracker = new TokenUsageTracker(tokenTestDir);
-
-		// Add session with high output cost ratio (> 70%)
-		tracker.recordSession({
-			sessionId: "session-1",
-			sessionType: "test_executor",
-			model: "claude-sonnet-4-5-20250929",
-			durationMs: 60000,
-			numTurns: 5,
-			tokens: {
-				inputTokens: 1000, // Low input
-				outputTokens: 50000, // Very high output
-				cacheCreationTokens: 0,
-				cacheReadTokens: 0,
-			},
-		});
-
-		const generator = new CostReportGenerator(tracker);
-		const report = generator.generateMarkdownReport();
-
-		expect(report).toContain("Output Token Optimization");
 	});
 });

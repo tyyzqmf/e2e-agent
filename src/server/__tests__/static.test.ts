@@ -150,7 +150,11 @@ describe("Static Routes", () => {
 
 		it("should include error details", async () => {
 			const response = notFoundHandler();
-			const data = (await response.json()) as { success: boolean; code: string; error: string };
+			const data = (await response.json()) as {
+				success: boolean;
+				code: string;
+				error: string;
+			};
 
 			expect(data.success).toBe(false);
 			expect(data.code).toBe("NOT_FOUND");

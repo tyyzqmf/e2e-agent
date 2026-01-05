@@ -114,6 +114,15 @@ export async function getTestExecutorPrompt(): Promise<string> {
 }
 
 /**
+ * Load the test report agent prompt.
+ *
+ * @returns Test report prompt content
+ */
+export async function getTestReportPrompt(): Promise<string> {
+	return loadPrompt("test_report_prompt");
+}
+
+/**
  * Copy a file or directory to the project directory if it doesn't exist.
  *
  * @param projectDir - Project directory to copy to

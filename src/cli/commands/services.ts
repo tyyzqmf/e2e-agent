@@ -201,7 +201,9 @@ export async function startAll(): Promise<void> {
 
 	console.log("");
 	console.log("AWS Bedrock Configuration:");
-	console.log(`  CLAUDE_CODE_USE_BEDROCK=${process.env.CLAUDE_CODE_USE_BEDROCK}`);
+	console.log(
+		`  CLAUDE_CODE_USE_BEDROCK=${process.env.CLAUDE_CODE_USE_BEDROCK}`,
+	);
 	console.log(`  AWS_REGION=${process.env.AWS_REGION}`);
 	console.log("");
 

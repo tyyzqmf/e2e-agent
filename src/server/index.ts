@@ -36,8 +36,10 @@ function initializeServices(): ServiceContext {
  * Build route handlers
  * Uses 'any' for request type to accommodate both Request and BunRequest handlers
  */
-// biome-ignore lint/suspicious/noExplicitAny: Routes accept both Request and BunRequest types
-function buildRoutes(services: ServiceContext): Record<string, (req: any) => Response | Promise<Response>> {
+function buildRoutes(
+	services: ServiceContext,
+	// biome-ignore lint/suspicious/noExplicitAny: Routes accept both Request and BunRequest types
+): Record<string, (req: any) => Response | Promise<Response>> {
 	return {
 		// Health check
 		...buildHealthRoute(services),

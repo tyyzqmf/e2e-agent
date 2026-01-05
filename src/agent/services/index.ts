@@ -25,6 +25,7 @@ export {
 	copyUtilsToProject,
 	getTestExecutorPrompt,
 	getTestPlannerPrompt,
+	getTestReportPrompt,
 	loadPrompt,
 	PROMPTS_DIR,
 	ROOT_DIR,
@@ -36,4 +37,4 @@ export {
 } from "./prompts.ts";
 
 // Token usage tracking
-export { CostReportGenerator, TokenUsageTracker } from "./token-usage.ts";
+export { TokenUsageTracker } from "./token-usage.ts";

@@ -132,7 +132,9 @@ describe("Config", () => {
 
 			const calls = consoleSpy.mock.calls.map((c: unknown[]) => c[0]);
 			// Should include separator lines
-			const hasSeparator = calls.some((line: unknown) => (line as string)?.includes("="));
+			const hasSeparator = calls.some((line: unknown) =>
+				(line as string)?.includes("="),
+			);
 			expect(hasSeparator).toBe(true);
 		});
 
@@ -140,7 +142,9 @@ describe("Config", () => {
 			printConfig();
 
 			const calls = consoleSpy.mock.calls.map((c: unknown[]) => c[0]);
-			const hasRuntime = calls.some((line: unknown) => (line as string)?.includes("Runtime"));
+			const hasRuntime = calls.some((line: unknown) =>
+				(line as string)?.includes("Runtime"),
+			);
 			expect(hasRuntime).toBe(true);
 		});
 
@@ -148,7 +152,9 @@ describe("Config", () => {
 			printConfig();
 
 			const calls = consoleSpy.mock.calls.map((c: unknown[]) => c[0]);
-			const hasEnv = calls.some((line: unknown) => (line as string)?.includes("Environment"));
+			const hasEnv = calls.some((line: unknown) =>
+				(line as string)?.includes("Environment"),
+			);
 			expect(hasEnv).toBe(true);
 		});
 
@@ -156,7 +162,9 @@ describe("Config", () => {
 			printConfig();
 
 			const calls = consoleSpy.mock.calls.map((c: unknown[]) => c[0]);
-			const hasServer = calls.some((line: unknown) => (line as string)?.includes("Server"));
+			const hasServer = calls.some((line: unknown) =>
+				(line as string)?.includes("Server"),
+			);
 			expect(hasServer).toBe(true);
 		});
 
@@ -164,7 +172,9 @@ describe("Config", () => {
 			printConfig();
 
 			const calls = consoleSpy.mock.calls.map((c: unknown[]) => c[0]);
-			const hasDataDir = calls.some((line: unknown) => (line as string)?.includes("Data Dir"));
+			const hasDataDir = calls.some((line: unknown) =>
+				(line as string)?.includes("Data Dir"),
+			);
 			expect(hasDataDir).toBe(true);
 		});
 
@@ -172,7 +182,9 @@ describe("Config", () => {
 			printConfig();
 
 			const calls = consoleSpy.mock.calls.map((c: unknown[]) => c[0]);
-			const hasDatabase = calls.some((line: unknown) => (line as string)?.includes("Database"));
+			const hasDatabase = calls.some((line: unknown) =>
+				(line as string)?.includes("Database"),
+			);
 			expect(hasDatabase).toBe(true);
 		});
 
@@ -180,7 +192,9 @@ describe("Config", () => {
 			printConfig();
 
 			const calls = consoleSpy.mock.calls.map((c: unknown[]) => c[0]);
-			const hasLogLevel = calls.some((line: unknown) => (line as string)?.includes("Log Level"));
+			const hasLogLevel = calls.some((line: unknown) =>
+				(line as string)?.includes("Log Level"),
+			);
 			expect(hasLogLevel).toBe(true);
 		});
 	});

@@ -238,7 +238,10 @@ describe("Environment Check", () => {
 			const logCalls = consoleSpy.mock.calls.map((c: unknown[]) => c[0]);
 			// At least some dependencies should show OK status
 			const hasOkStatus = logCalls.some(
-				(msg: unknown) => msg && ((msg as string).includes("OK") || (msg as string).includes("\x1b[0;32m")),
+				(msg: unknown) =>
+					msg &&
+					((msg as string).includes("OK") ||
+						(msg as string).includes("\x1b[0;32m")),
 			);
 			expect(hasOkStatus).toBe(true);
 		});
@@ -247,7 +250,9 @@ describe("Environment Check", () => {
 			await checkRequirements(true);
 
 			const writeCalls = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]);
-			const hasNodeCheck = writeCalls.some((msg: unknown) => (msg as string)?.includes("Node"));
+			const hasNodeCheck = writeCalls.some((msg: unknown) =>
+				(msg as string)?.includes("Node"),
+			);
 			expect(hasNodeCheck).toBe(true);
 		});
 
@@ -255,7 +260,9 @@ describe("Environment Check", () => {
 			await checkRequirements(true);
 
 			const writeCalls = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]);
-			const hasNpxCheck = writeCalls.some((msg: unknown) => (msg as string)?.includes("npx"));
+			const hasNpxCheck = writeCalls.some((msg: unknown) =>
+				(msg as string)?.includes("npx"),
+			);
 			expect(hasNpxCheck).toBe(true);
 		});
 
@@ -263,7 +270,9 @@ describe("Environment Check", () => {
 			await checkRequirements(true);
 
 			const writeCalls = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]);
-			const hasChromeCheck = writeCalls.some((msg: unknown) => (msg as string)?.includes("Chrome"));
+			const hasChromeCheck = writeCalls.some((msg: unknown) =>
+				(msg as string)?.includes("Chrome"),
+			);
 			expect(hasChromeCheck).toBe(true);
 		});
 
@@ -271,7 +280,9 @@ describe("Environment Check", () => {
 			await checkRequirements(true);
 
 			const writeCalls = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]);
-			const hasBunCheck = writeCalls.some((msg: unknown) => (msg as string)?.includes("Bun"));
+			const hasBunCheck = writeCalls.some((msg: unknown) =>
+				(msg as string)?.includes("Bun"),
+			);
 			expect(hasBunCheck).toBe(true);
 		});
 	});
@@ -746,7 +757,9 @@ describe("Environment Check", () => {
 		test("checkRequirements verbose output includes all dependency names", async () => {
 			await checkRequirements(true);
 
-			const writeCalls = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join(" ");
+			const writeCalls = stdoutSpy.mock.calls
+				.map((c: unknown[]) => c[0])
+				.join(" ");
 
 			expect(writeCalls).toContain("Node");
 			expect(writeCalls).toContain("npx");
@@ -757,7 +770,9 @@ describe("Environment Check", () => {
 		test("checkRequirements verbose shows OK or MISSING for each check", async () => {
 			await checkRequirements(true);
 
-			const logCalls = consoleSpy.mock.calls.map((c: unknown[]) => c[0]).join(" ");
+			const logCalls = consoleSpy.mock.calls
+				.map((c: unknown[]) => c[0])
+				.join(" ");
 
 			// Should have at least OK or MISSING for each dependency
 			expect(logCalls.includes("OK") || logCalls.includes("MISSING")).toBe(

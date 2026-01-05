@@ -356,84 +356,26 @@ Update `claude-progress.txt` with:
 
 ---
 
-### STEP 9: GENERATE REPORTS AND END SESSION
+### STEP 9: END SESSION
 
 **9.1 Check Completion Status**
 
 ```bash
 python3 utils/json_helper.py count "Not Run"
-# If result is 0, all tests completed - generate final reports
 ```
 
-**⚠️ CRITICAL: Only declare completion when `count "Not Run"` returns 0**
-
+**Session end conditions:**
 - If count > 0, there are still tests to execute in future sessions
-- Do NOT generate final reports or declare "MISSION ACCOMPLISHED" with tests remaining
-- Continue to next session - the agent loop will automatically continue
+- Do NOT declare "MISSION ACCOMPLISHED" or "COMPLETE" with tests remaining
+- The agent loop will automatically continue with the next session
 
-**Generate reports when:**
-1. All test cases completed (no "Not Run" remaining) - PRIMARY
-2. User explicitly requests
-3. Final session with >90% completion
+**9.2 Cleanup**
 
-**9.2 Consolidate Screenshots and Logs (MANDATORY before HTML generation)**
+- [ ] Close any open browser tabs
+- [ ] Ensure `test_cases.json` is saved with latest results
+- [ ] Update `claude-progress.txt` with session summary
 
-Screenshots and Snapshots are logs across session directories. 
-
-1. Find all session directories
-2. Copy all screenshots and logs to current session
-3. Verify consolidation worked
-
-**Why this matters:** HTML Report Viewer uses relative paths. Without consolidation, images and snapshots files will be broken.
-
-**9.3 Generate Test Case Reports**
-
-For each executed test:
-1. Read template: `Read(file_path="./templates/test-case-report.md")`
-2. Create: `test-reports/{timestamp}/test-case-reports/TC-XXX-{title}.md`
-
-**9.4 Generate Test Summary Report**
-
-1. Read template: `Read(file_path="./templates/test-summary-report.md")`
-2. Create: `test-reports/{timestamp}/test-summary-report.md`
-
-Include:
-- Execution summary (total, pass, fail, blocked)
-- Pass rate percentage
-- Module-wise breakdown
-- Defect summary by severity
-
-**9.5 Generate HTML Report Viewer (REQUIRED)**
-
-1. Use the `frontend-design` skill
-2. Read template: `Read(file_path="./templates/Test_Report_Viewer.html")`
-3. Style reference from the template (design system: colors, typography, layout patterns)
-4. All test data to be rendered (from `test_cases.json` and `usage_statistics.json`)
-5. Output path: `test-reports/{timestamp}/Test_Report_Viewer.html`
-
-
-Include:
-- Header: Project name, Run ID, Report date, Target URL
-- Status: Overall status (Pass/Fail), Status color
-- Stats: Total tests, Passed, Failed, Blocked, Not Run counts
-- Percentages: Pass rate, Fail rate, Blocked rate, Not Run rate
-- Test Cases Overview: Id, Title, Module, Priority, Status
-- Test Case Details: Id, Title, Module, Priority, Status, Test Steps, Expected Result, Actual Result, Evidence
-- Cost Statistics: Total cost (from `usage_statistics.json`), Total tokens, Duration, Sessions
-- Related Documents: Links to `test-summary-report.md` and other logs
-
-**Image/File Paths:**
-- Use relative paths from HTML location: `screenshots/01_TC-001_page.png`
-- Ensure all screenshots are in the same `screenshots/` directory
-- Use relative paths from HTML location: `logs/TC-001_page_snapshot.txt`
-- Ensure all snapshot are in the same `logs/` directory
-
-**9.6 Verify and Cleanup**
-
-- [ ] All image paths are relative and working
-- [ ] All test case screenshots and snapshot consolidated
-- [ ] Links to reports work
-- [ ] Browser tabs closed cleanly
+**Note:** Report generation is handled by a separate agent after all tests are completed.
 
 ---
 

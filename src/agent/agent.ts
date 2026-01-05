@@ -6,21 +6,15 @@
  * Uses Claude Agent SDK to execute test planning and test execution sessions.
  */
 
-import {
-	existsSync,
-	mkdirSync,
-	readdirSync,
-	statSync,
-	writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { createSdkOptions } from "./client.ts";
 import type { AgentOptions } from "./config.ts";
 import { AUTO_CONTINUE_DELAY_MS, DEFAULT_MODEL } from "./config.ts";
 import {
-	CostReportGenerator,
 	getTestExecutorPrompt,
 	getTestPlannerPrompt,
+	getTestReportPrompt,
 	ProgressTracker,
 	printTestProgressSummary,
 	printTestSessionHeader,
@@ -215,30 +209,22 @@ export async function runAutonomousTestingAgent(
 							`\n  ${MAX_NO_PROGRESS_SESSIONS} consecutive sessions with no test progress.`,
 						);
 						console.log(`  Remaining "Not Run" tests: ${stats.notRun}`);
-						console.log(
-							"\n  Possible causes:",
-						);
+						console.log("\n  Possible causes:");
 						console.log(
 							'    - Agent may be stuck due to "MISSION ACCOMPLISHED" in claude-progress.txt',
 						);
-						console.log(
-							"    - Blocking defects preventing test execution",
-						);
+						console.log("    - Blocking defects preventing test execution");
 						console.log(
 							"    - Environment issues preventing browser automation",
 						);
-						console.log(
-							"\n  Recommended actions:",
-						);
+						console.log("\n  Recommended actions:");
 						console.log(
 							"    1. Review claude-progress.txt and remove premature completion claims",
 						);
 						console.log(
 							"    2. Check test_cases.json for remaining Not Run tests",
 						);
-						console.log(
-							"    3. Restart the agent after addressing issues",
-						);
+						console.log("    3. Restart the agent after addressing issues");
 						console.log("=".repeat(70));
 						break;
 					}
@@ -273,38 +259,57 @@ export async function runAutonomousTestingAgent(
 	console.log(`\nProject directory: ${projectDir}`);
 	await printTestProgressSummary(projectDir);
 
-	// Generate cost report
-	try {
-		const reportGenerator = new CostReportGenerator(usageTracker);
-		const costReport = reportGenerator.generateMarkdownReport();
+	// Run report agent to generate final reports (only if tests were executed)
+	const finalStats = await progressTracker.countTestCases();
+	if (finalStats.total > 0 && finalStats.notRun === 0 && !idleLoopDetected) {
+		console.log(`\n${"=".repeat(70)}`);
+		console.log("  GENERATING FINAL REPORTS");
+		console.log("=".repeat(70));
 
-		const testReportsDir = join(projectDir, "test-reports");
-		if (existsSync(testReportsDir)) {
-			const reportDirs = readdirSync(testReportsDir)
-				.map((name: string) => join(testReportsDir, name))
-				.filter((path: string) => statSync(path).isDirectory())
-				.sort(
-					(a: string, b: string) =>
-						statSync(b).mtime.getTime() - statSync(a).mtime.getTime(),
-				);
+		try {
+			// Create SDK options for report session
+			const { options: reportSdkOptions } = await createSdkOptions({
+				projectDir,
+				model,
+			});
 
-			if (reportDirs.length > 0) {
-				const latestReportDir = reportDirs[0];
-				const costReportPath = join(latestReportDir, "cost_statistics.md");
-				writeFileSync(costReportPath, costReport, "utf-8");
-				console.log(`\n[Cost Report] Saved to: ${costReportPath}`);
-			} else {
-				const costReportPath = join(projectDir, "cost_statistics.md");
-				writeFileSync(costReportPath, costReport, "utf-8");
-				console.log(`\n[Cost Report] Saved to: ${costReportPath}`);
+			// Get report prompt
+			const reportPrompt = await getTestReportPrompt();
+
+			// Create abort controller
+			const reportAbortController = new AbortController();
+
+			// Run report session
+			const { result: reportResult } = await runAgentSession(
+				reportSdkOptions,
+				reportPrompt,
+				reportAbortController,
+			);
+
+			// Record usage statistics for report session
+			if (reportResult.usageData?.usage) {
+				try {
+					const reportSessionRecord = usageTracker.recordSession({
+						sessionId: reportResult.usageData.sessionId,
+						sessionType: "test_report",
+						model,
+						durationMs: reportResult.usageData.durationMs,
+						numTurns: reportResult.usageData.numTurns,
+						tokens: reportResult.usageData.usage,
+						sdkCostUsd: reportResult.usageData.totalCostUsd,
+					});
+					usageTracker.displaySessionStats(reportSessionRecord);
+				} catch (error) {
+					console.log(
+						`[Warning] Failed to record report session usage: ${error}`,
+					);
+				}
 			}
-		} else {
-			const costReportPath = join(projectDir, "cost_statistics.md");
-			writeFileSync(costReportPath, costReport, "utf-8");
-			console.log(`\n[Cost Report] Saved to: ${costReportPath}`);
+
+			console.log("\n[Report Generation] Complete");
+		} catch (error) {
+			console.log(`\n[Warning] Failed to generate reports: ${error}`);
 		}
-	} catch (error) {
-		console.log(`\n[Warning] Failed to generate cost report: ${error}`);
 	}
 
 	// Print instructions
