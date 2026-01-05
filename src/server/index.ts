@@ -211,7 +211,7 @@ async function main(): Promise<void> {
 	console.log(`
 ╔═══════════════════════════════════════════════════════════╗
 ║           E2E Test Agent Web Service v2.0.0               ║
-║               Powered by Bun ${Bun.version.padEnd(26)}║
+║               Powered by Bun ${Bun.version.padEnd(26)}   ║
 ╚═══════════════════════════════════════════════════════════╝
   `);
 

@@ -356,24 +356,15 @@ python3 utils/json_helper.py count "Not Run"
 2. User explicitly requests
 3. Final session with >90% completion
 
-**9.2 Consolidate Screenshots (MANDATORY before HTML generation)**
+**9.2 Consolidate Screenshots and Logs (MANDATORY before HTML generation)**
 
-Screenshots are scattered across session directories. Consolidate them:
+Screenshots and Snapshots are logs across session directories. 
 
-```bash
-# Find all session directories
-ls -1d test-reports/*/screenshots
+1. Find all session directories
+2. Copy all screenshots and logs to current session
+3. Verify consolidation worked
 
-# Copy all screenshots to current session (use find to avoid "Argument list too long")
-find test-reports/*/screenshots -name "*.png" -type f \
-  -not -path "test-reports/{current_timestamp}/*" \
-  -exec cp {} test-reports/{current_timestamp}/screenshots/ \; 2>/dev/null || true
-
-# Verify consolidation
-ls -1 test-reports/{current_timestamp}/screenshots/ | wc -l
-```
-
-**Why this matters:** HTML Report Viewer uses relative paths. Without consolidation, images will be broken.
+**Why this matters:** HTML Report Viewer uses relative paths. Without consolidation, images and snapshots files will be broken.
 
 **9.3 Generate Test Case Reports**
 
@@ -394,68 +385,33 @@ Include:
 
 **9.5 Generate HTML Report Viewer (REQUIRED)**
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  MANDATORY: Use the provided HTML template!                     │
-│                                                                 │
-│  1. Read(file_path="./templates/Test_Report_Viewer.html")       │
-│  2. Replace {{PLACEHOLDER}} values with actual data             │
-│  3. Write to test-reports/{timestamp}/Test_Report_Viewer.html   │
-│                                                                 │
-│  ❌ NEVER create HTML from scratch                              │
-│  ❌ NEVER skip the template Read step                           │
-│  ✅ Template has professional styling - preserve it!            │
-└─────────────────────────────────────────────────────────────────┘
-```
+1. Use the `frontend-design` skill
+2. Read template: `Read(file_path="./templates/Test_Report_Viewer.html")`
+3. Style reference from the template (design system: colors, typography, layout patterns)
+4. All test data to be rendered (from `test_cases.json` and `usage_statistics.json`)
+5. Output path: `test-reports/{timestamp}/Test_Report_Viewer.html`
 
-**Template Placeholders:**
 
-| Category | Placeholders |
-|----------|--------------|
-| Header | `{{PROJECT_NAME}}`, `{{RUN_ID}}`, `{{REPORT_DATE}}`, `{{TARGET_URL}}` |
-| Status | `{{OVERALL_STATUS}}`, `{{OVERALL_STATUS_COLOR}}` |
-| Stats | `{{TOTAL_TESTS}}`, `{{PASSED_TESTS}}`, `{{FAILED_TESTS}}`, `{{BLOCKED_TESTS}}`, `{{NOTRUN_TESTS}}` |
-| Percentages | `{{PASSED_PERCENT}}`, `{{FAILED_PERCENT}}`, `{{BLOCKED_PERCENT}}`, `{{NOTRUN_PERCENT}}` |
-| Coverage | `{{COVERAGE_PERCENT}}`, `{{EXECUTION_PERCENT}}` |
-| Cost | `{{TOTAL_COST}}`, `{{TOTAL_TOKENS}}`, `{{DURATION}}`, `{{SESSIONS}}` |
+Include:
+- Header: Project name, Run ID, Report date, Target URL
+- Status: Overall status (Pass/Fail), Status color
+- Stats: Total tests, Passed, Failed, Blocked, Not Run counts
+- Percentages: Pass rate, Fail rate, Blocked rate, Not Run rate
+- Test Cases Overview: Id, Title, Module, Priority, Status
+- Test Case Details: Id, Title, Module, Priority, Status, Test Steps, Expected Result, Actual Result, Evidence
+- Cost Statistics: Total cost (from `usage_statistics.json`), Total tokens, Duration, Sessions
+- Related Documents: Links to `test-summary-report.md` and other logs
 
-**Cost Statistics - Read from usage_statistics.json:**
-
-The cost data is tracked in `./usage_statistics.json`.
-
-Map to placeholders:
-- `{{TOTAL_COST}}` → `$` + `summary.total_cost_usd` (e.g., "$0.6067")
-- `{{TOTAL_TOKENS}}` → `summary.total_tokens` formatted with commas (e.g., "39,818")
-- `{{DURATION}}` → Calculate from session timestamps or use "~Xmin" based on session count
-- `{{SESSIONS}}` → `summary.total_sessions` (e.g., "2")
-
-**Loop Sections:**
-- `{{#TEST_CASES_TABLE}}...{{/TEST_CASES_TABLE}}` - Table rows
-- `{{#TEST_CASE_DETAILS}}...{{/TEST_CASE_DETAILS}}` - Detail cards
-- `{{#TC_EVIDENCE}}...{{/TC_EVIDENCE}}` - Evidence items
-
-**Class Mappings:**
-- Priority: `p1`, `p2`, `p3` (lowercase)
-- Status: `pass`, `fail`, `blocked`, `notrun` (lowercase)
-- Icons: `&#10003;` (✓), `&#10007;` (✗), `&#9888;` (⚠), `&#9679;` (●)
-
-**Image Paths:**
+**Image/File Paths:**
 - Use relative paths from HTML location: `screenshots/01_TC-001_page.png`
 - Ensure all screenshots are in the same `screenshots/` directory
-
-**HTML Report Viewer Features:**
-- Interactive test results dashboard with statistics
-- Filterable/sortable test case list
-- Screenshot gallery with modal viewer
-- Links to all test case and defect reports
-- Visual pass/fail indicators
-- Fully portable (can be opened in any browser)
+- Use relative paths from HTML location: `logs/TC-001_page_snapshot.txt`
+- Ensure all snapshot are in the same `logs/` directory
 
 **9.6 Verify and Cleanup**
 
-- [ ] All `{{...}}` placeholders replaced
 - [ ] All image paths are relative and working
-- [ ] All test case screenshots consolidated
+- [ ] All test case screenshots and snapshot consolidated
 - [ ] Links to reports work
 - [ ] Browser tabs closed cleanly
 
