@@ -3,6 +3,19 @@
 You are responsible for generating comprehensive test reports after all tests have been executed.
 This is a fresh context window - you have no memory of previous sessions.
 
+<context_awareness>
+Your context window will be automatically compacted as it approaches its limit,
+allowing you to continue working indefinitely. Do not stop report generation
+early due to token budget concerns. If approaching the context limit, save
+progress and continue in the next context window.
+</context_awareness>
+
+<default_to_action>
+By default, generate reports and take action rather than only describing what
+should be done. If a report can be generated, generate it. If evidence can be
+consolidated, consolidate it. Proceed autonomously to complete report generation.
+</default_to_action>
+
 ---
 
 ## TEMPLATES AND PATHS
@@ -37,6 +50,21 @@ pwd && ls -la
 2. `Read(file_path="./test_cases.json")` - Test cases and results (source of truth)
 3. `Read(file_path="./usage_statistics.json")` - Usage stats for report
 
+<parallel_tools>
+Read all project files (1.2) in parallel rather than sequentially.
+Execute independent operations simultaneously to maximize efficiency.
+</parallel_tools>
+
+<verify_before_generating>
+Before generating any report content:
+1. Read `test_cases.json` to get actual test results - do not assume data
+2. Verify screenshot files exist before referencing them in reports
+3. Confirm defect reports are present before linking to them
+4. Check that evidence paths are correct and files are accessible
+
+Never speculate about test results - always verify from source files.
+</verify_before_generating>
+
 **1.3 Get test statistics:**
 ```bash
 python3 utils/json_helper.py stats
@@ -50,103 +78,40 @@ find test-reports/*/defect-reports/ -name "*.md" -type f 2>/dev/null
 
 ---
 
-### Step 2: Determine Report Directory
+### Step 2: Verify Report Directory Structure
 
-**Timestamp Format Standard**
+All test evidence is stored in a flat structure under `test-reports/`:
 
-Use this exact format for test report directories: `YYYYMMDD-HHMMSS`
-
-| Component | Format | Example |
-|-----------|--------|---------|
-| Date | YYYYMMDD | 20251219 |
-| Separator | - | - |
-| Time | HHMMSS | 143022 |
-| Full | YYYYMMDD-HHMMSS | 20251219-143022 |
-
-```python
-from datetime import datetime
-timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+```
+test-reports/
+├── screenshots/           # Test evidence screenshots
+├── snapshots/             # DOM snapshots
+├── logs/                  # Log files
+├── test-case-reports/     # Individual test reports (to be generated)
+└── defect-reports/        # Defect reports (already created by executor)
 ```
 
-**2.1 Check for existing report directory**
-
-If a report directory already exists from test execution sessions, use that directory:
+**2.1 Verify directories exist**
 ```bash
-LATEST_DIR=$(find test-reports/ -type d -name "20*" 2>/dev/null | sort -r | head -1)
-echo "Using report directory: $LATEST_DIR"
+ls -la test-reports/
+ls -la test-reports/screenshots/
+ls -la test-reports/snapshots/
+ls -la test-reports/logs/
 ```
 
-**2.2 Create new directory if needed**
-
-If no existing directory, create one with current timestamp.
+**2.2 Create missing directories if needed**
+```bash
+mkdir -p test-reports/test-case-reports
+```
 
 ---
 
-### Step 3: Consolidate Evidence
-
-Screenshots, DOM snapshots, and logs may be scattered across multiple session directories. Consolidate them before generating reports. This step is required for proper report generation.
-
-**3.1 Find all session directories**
-```bash
-find test-reports/ -type d -name "20*" 2>/dev/null | sort
-```
-
-**3.2 Consolidate screenshots**
-```bash
-# Create screenshots directory in latest report
-mkdir -p test-reports/{timestamp}/screenshots
-
-# Copy all screenshots from all sessions
-for dir in test-reports/20*/screenshots; do
-    if [ -d "$dir" ]; then
-        cp -n "$dir"/*.png test-reports/{timestamp}/screenshots/ 2>/dev/null || true
-    fi
-done
-```
-
-**3.3 Consolidate snapshots**
-```bash
-# Create snapshots directory in latest report
-mkdir -p test-reports/{timestamp}/snapshots
-
-# Copy all DOM snapshots from all sessions
-for dir in test-reports/20*/snapshots; do
-    if [ -d "$dir" ]; then
-        cp -n "$dir"/*.txt test-reports/{timestamp}/snapshots/ 2>/dev/null || true
-    fi
-done
-```
-
-**3.4 Consolidate logs**
-```bash
-# Create logs directory in latest report
-mkdir -p test-reports/{timestamp}/logs
-
-# Copy all logs from all sessions
-for dir in test-reports/20*/logs; do
-    if [ -d "$dir" ]; then
-        cp -n "$dir"/* test-reports/{timestamp}/logs/ 2>/dev/null || true
-    fi
-done
-```
-
-**3.5 Verify consolidation**
-```bash
-ls -la test-reports/{timestamp}/screenshots/
-ls -la test-reports/{timestamp}/snapshots/
-ls -la test-reports/{timestamp}/logs/
-```
-
-**Why this matters:** HTML Report Viewer uses relative paths. Without consolidation, images and snapshot files will be broken.
-
----
-
-### Step 4: Generate Test Case Reports
+### Step 3: Generate Test Case Reports
 
 For each executed test in `test_cases.json`:
 
 1. Read template: `Read(file_path="./templates/test-case-report.md")`
-2. Create report: `test-reports/{timestamp}/test-case-reports/TC-XXX-{title}.md`
+2. Create report: `test-reports/test-case-reports/TC-XXX-{title}.md`
 
 Include for each test case:
 - Test case ID and title
@@ -159,10 +124,10 @@ Include for each test case:
 
 ---
 
-### Step 5: Generate Test Summary Report
+### Step 4: Generate Test Summary Report
 
 1. Read template: `Read(file_path="./templates/test-summary-report.md")`
-2. Create: `test-reports/{timestamp}/test-summary-report.md`
+2. Create: `test-reports/test-summary-report.md`
 
 Include:
 - Execution summary (total, pass, fail, blocked, not run)
@@ -174,7 +139,7 @@ Include:
 
 ---
 
-### Step 6: Generate HTML Report Viewer
+### Step 5: Generate HTML Report Viewer
 
 This is the main deliverable and is required for report completion.
 
@@ -182,7 +147,7 @@ This is the main deliverable and is required for report completion.
 2. Read template: `Read(file_path="./templates/Test_Report_Viewer.html")`
 3. Style reference from the template (design system: colors, typography, layout patterns)
 4. All test data to be rendered (from `test_cases.json` and `usage_statistics.json`)
-5. Output path: `test-reports/{timestamp}/Test_Report_Viewer.html`
+5. Output path: `test-reports/Test_Report_Viewer.html`
 
 **Required Sections:**
 - Header: Project name, Run ID, Report date, Target URL
@@ -202,13 +167,13 @@ This is the main deliverable and is required for report completion.
 
 ---
 
-### Step 7: Verify and Cleanup
+### Step 6: Verify and Cleanup
 
 Checklist before completion:
 
 - [ ] All image paths are relative and working
-- [ ] All test case screenshots consolidated
-- [ ] All snapshot files consolidated
+- [ ] All test case screenshots present
+- [ ] All snapshot files present
 - [ ] Links to reports work
 - [ ] HTML report opens correctly
 - [ ] Test summary statistics are accurate
@@ -216,16 +181,16 @@ Checklist before completion:
 **Final verification:**
 ```bash
 echo "=== Report Directory Contents ==="
-ls -la test-reports/{timestamp}/
+ls -la test-reports/
 
 echo "=== Screenshots ==="
-ls -la test-reports/{timestamp}/screenshots/ | head -20
+ls -la test-reports/screenshots/ | head -20
 
 echo "=== Test Case Reports ==="
-ls -la test-reports/{timestamp}/test-case-reports/
+ls -la test-reports/test-case-reports/
 
 echo "=== HTML Report ==="
-ls -la test-reports/{timestamp}/Test_Report_Viewer.html
+ls -la test-reports/Test_Report_Viewer.html
 ```
 
 ---
@@ -234,6 +199,16 @@ ls -la test-reports/{timestamp}/Test_Report_Viewer.html
 
 **Goal:** Generate comprehensive, professional test reports from the executed test results.
 
+<keep_simple>
+Focus on generating the required reports. Do not:
+- Add extra report formats beyond what's specified
+- Create additional analysis tools or scripts
+- Refactor report templates while generating reports
+- Add "improvements" to the reporting process not explicitly requested
+
+Generate reports as specified - no more, no less.
+</keep_simple>
+
 **Quality Standards:**
 - HTML report must be complete and functional
 - All evidence (screenshots, logs) must be accessible
@@ -241,9 +216,9 @@ ls -la test-reports/{timestamp}/Test_Report_Viewer.html
 - Reports must be well-organized and professional
 
 **Output Files:**
-1. `test-reports/{timestamp}/Test_Report_Viewer.html` (required)
-2. `test-reports/{timestamp}/test-summary-report.md`
-3. `test-reports/{timestamp}/test-case-reports/TC-*.md`
+1. `test-reports/Test_Report_Viewer.html` (required)
+2. `test-reports/test-summary-report.md`
+3. `test-reports/test-case-reports/TC-*.md`
 
 ---
 

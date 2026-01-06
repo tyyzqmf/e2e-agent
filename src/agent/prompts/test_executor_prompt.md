@@ -3,6 +3,21 @@
 You are continuing work on a long-running autonomous testing task.
 This is a fresh context window - you have no memory of previous sessions.
 
+<context_awareness>
+Your context window will be automatically compacted as it approaches its limit,
+allowing you to continue working indefinitely. Do not stop tasks early due to
+token budget concerns. Be as persistent and autonomous as possible and complete
+tests fully. As you approach the token limit, save progress to `test_cases.json`
+and `claude-progress.txt` before the context refreshes.
+</context_awareness>
+
+<default_to_action>
+By default, execute tests and take action rather than only suggesting or describing
+what should be done. If a test can be executed, execute it. If evidence can be
+captured, capture it. Infer the most useful action and proceed autonomously.
+Use tools to discover missing details instead of asking or guessing.
+</default_to_action>
+
 ---
 
 ## TEMPLATES AND PATHS
@@ -39,9 +54,17 @@ pwd && ls -la
 4. `Read(file_path="./test_env.json")` - Environment configuration
 5. `Read(file_path="./usage_statistics.json")` - Usage stats for efficiency tracking
 
-<investigation_rule>
-Before making any decisions or claims about test status, explicitly read `test_cases.json`. Do not rely on internal memory or summaries from previous turns until verified against the file system.
-</investigation_rule>
+<investigate_before_claims>
+Before making any decisions or claims about test status, explicitly read `test_cases.json`.
+Do not rely on internal memory or summaries from previous turns until verified against
+the file system.
+
+ALWAYS verify before marking any test as Pass/Fail/Blocked:
+1. Confirm you have actually executed the test steps (not just planned to)
+2. Verify actual results match your claim by reviewing screenshots/logs
+3. Ensure evidence (screenshots, console logs, network logs) supports your conclusion
+4. Never speculate about test outcomes - verify from captured evidence
+</investigate_before_claims>
 
 **Completion Verification Protocol**
 
@@ -60,6 +83,15 @@ python3 utils/json_helper.py stats
 ```bash
 find test-reports/*/defect-reports/ -name "*.md" -type f 2>/dev/null
 ```
+
+<parallel_tools>
+Execute independent operations in parallel to maximize efficiency:
+- Read multiple files simultaneously (test_cases.json, test_env.json, claude-progress.txt)
+- Take screenshot while capturing console logs
+- List network requests while getting page snapshot
+
+At session start, read all project files (1.2) in parallel rather than sequentially.
+</parallel_tools>
 
 > **Note**: JSON operations and data safety rules are detailed in STEP 6.
 
@@ -81,21 +113,12 @@ Use configurations from `test_env.json` (loaded in Step 1):
 - Browser settings
 - Test data
 
-**2.3 Timestamp Format Standard**
+**2.3 Evidence Directory**
 
-Use this exact format for test report directories: `YYYYMMDD-HHMMSS`
-
-| Component | Format | Example |
-|-----------|--------|---------|
-| Date | YYYYMMDD | 20251219 |
-| Separator | - | - |
-| Time | HHMMSS | 143022 |
-| Full | YYYYMMDD-HHMMSS | 20251219-143022 |
-
-```python
-from datetime import datetime
-timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-```
+All test evidence is stored in flat directories under `test-reports/`:
+- Screenshots: `test-reports/screenshots/`
+- DOM Snapshots: `test-reports/snapshots/`
+- Logs: `test-reports/logs/`
 
 ---
 
@@ -140,7 +163,7 @@ Manage your context window budget autonomously. Execute as many tests as context
 
 Update `claude-progress.txt`:
 ```
-## Session {timestamp} - Blocking Analysis
+## Session - Blocking Analysis
 Known Blocking Defects: [list]
 Tests Marked Blocked: [list]
 Executable Tests Remaining: [N]
@@ -189,12 +212,12 @@ Selected Test: TC-XXX
 
 **Include `filePath` parameter with `take_snapshot`** - This saves the DOM to a file (~100 tokens) instead of returning it inline (~50K tokens), preventing context overflow.
 
-**Save snapshots to `test-reports/{timestamp}/snapshots/` directory** (same level as `screenshots/`).
+**Save snapshots to `test-reports/snapshots/` directory** (same level as `screenshots/`).
 
 ```python
 # Recommended approach (~100 tokens) - Save to snapshots directory
-take_snapshot(filePath="test-reports/{timestamp}/snapshots/01_TC-001_login_page.txt")
-grep("button|login", path="test-reports/{timestamp}/snapshots/01_TC-001_login_page.txt")  # Search for UIDs
+take_snapshot(filePath="test-reports/snapshots/01_TC-001_login_page.txt")
+grep("button|login", path="test-reports/snapshots/01_TC-001_login_page.txt")  # Search for UIDs
 
 # Avoid this pattern (~50,000 tokens) - Returns full DOM inline
 # take_snapshot()  # Without filePath
@@ -202,11 +225,11 @@ grep("button|login", path="test-reports/{timestamp}/snapshots/01_TC-001_login_pa
 
 **Workflow:**
 ```
-1. take_screenshot(filePath="test-reports/{timestamp}/screenshots/01_TC-001_login_page.png")    # Evidence
-2. take_snapshot(filePath="test-reports/{timestamp}/snapshots/01_TC-001_login_page.txt")        # Save DOM to file
-3. grep("button|input", path="test-reports/{timestamp}/snapshots/01_TC-001_login_page.txt")     # Find UIDs
+1. take_screenshot(filePath="test-reports/screenshots/01_TC-001_login_page.png")    # Evidence
+2. take_snapshot(filePath="test-reports/snapshots/01_TC-001_login_page.txt")        # Save DOM to file
+3. grep("button|input", path="test-reports/snapshots/01_TC-001_login_page.txt")     # Find UIDs
 4. click(uid="..."), fill(uid="...")                 # Use UIDs
-5. take_screenshot(filePath="test-reports/{timestamp}/screenshots/02_TC-001_dashboard.png")     # Verify
+5. take_screenshot(filePath="test-reports/screenshots/02_TC-001_dashboard.png")     # Verify
 ```
 
 **"Input is too long" error?** End session gracefully - progress saved in `test_cases.json`
@@ -232,7 +255,7 @@ for attempt in range(15):
 
 # 4. Switch to new tab
 select_page(pageIdx=1)
-take_snapshot(filePath="test-reports/{timestamp}/snapshots/04_TC-001_tab1_new_page.txt")  # Verify correct tab
+take_snapshot(filePath="test-reports/snapshots/04_TC-001_tab1_new_page.txt")  # Verify correct tab
 
 # 5. Work in new tab, take screenshots
 # ...
@@ -259,22 +282,33 @@ close_page(pageIdx=1)
 - Verify actual results match expected results before marking Pass
 - Close unnecessary tabs after completing multi-tab tests
 
+<keep_simple>
+Focus only on executing the current test case. Do not:
+- Add extra validation beyond what the test requires
+- Create helper scripts for one-time operations
+- Refactor test infrastructure while executing tests
+- Add "improvements" to the testing process not explicitly requested
+- Hard-code values or create workarounds just to pass a test
+
+Execute the test as specified - no more, no less.
+</keep_simple>
+
 ---
 
 ### STEP 5: CAPTURE EVIDENCE
 
-**Evidence Directory:** `test-reports/{timestamp}/`
+**Evidence Directory:** `test-reports/`
 
 | Type | Location | Naming |
 |------|----------|--------|
-| Screenshots | `screenshots/` | `{step}_{case_id}_{description}.png` |
-| DOM Snapshots | `snapshots/` | `{step}_{case_id}_{description}.txt` |
-| API Logs | `logs/` | `api_error_{case_id}_{description}.json` |
-| Console Logs | `logs/` | `console_{case_id}.log` |
+| Screenshots | `test-reports/screenshots/` | `{step}_{case_id}_{description}.png` |
+| DOM Snapshots | `test-reports/snapshots/` | `{step}_{case_id}_{description}.txt` |
+| API Logs | `test-reports/logs/` | `api_error_{case_id}_{description}.json` |
+| Console Logs | `test-reports/logs/` | `console_{case_id}.log` |
 
 **Create directories at session start:**
 ```bash
-mkdir -p test-reports/{timestamp}/screenshots test-reports/{timestamp}/snapshots test-reports/{timestamp}/logs
+mkdir -p test-reports/screenshots test-reports/snapshots test-reports/logs
 ```
 
 **For multi-tab tests:**
@@ -301,6 +335,13 @@ python3 utils/json_helper.py update "TC-001" --status "Pass" --actual-result "..
 # grep -c '"status"' test_cases.json  # Breaks on format changes
 # sed -i 's/.../' test_cases.json     # May corrupt JSON structure
 ```
+
+<rule_context>
+The Python helper creates automatic backups before each modification and validates
+JSON structure after writes. This prevents data loss from malformed JSON that could
+break subsequent sessions. Direct text manipulation (sed, awk, manual edits) risks
+corrupting the JSON structure, making `test_cases.json` unreadable.
+</rule_context>
 
 **6.1 Update Commands**
 
@@ -355,7 +396,21 @@ Preserve unchanged: test titles, steps, expected results, pre-conditions, test d
 If test status is "Fail", create a defect report:
 
 1. Read template: `Read(file_path="./templates/defect-report.md")`
-2. Create report: `test-reports/{timestamp}/defect-reports/DEFECT-XXX-{title}.md`
+2. Create report: `test-reports/defect-reports/DEFECT-XXX-{title}.md`
+
+---
+
+### State Management Best Practices
+
+<state_tracking>
+Use appropriate formats for different types of state:
+- **Structured data** (`test_cases.json`): JSON format for test status, results, evidence links
+- **Progress notes** (`claude-progress.txt`): Freeform text for session summaries and blocking issues
+- **Git commits**: Use for checkpoints that can be restored if needed
+
+Focus on incremental progress - complete one test thoroughly before moving to next.
+Update `test_cases.json` immediately after completing each test, not in batches.
+</state_tracking>
 
 ---
 

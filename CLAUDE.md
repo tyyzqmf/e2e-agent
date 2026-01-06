@@ -173,15 +173,15 @@ generations/
     ├── .claude_settings.json     # Security settings
     ├── templates/                # Report templates
     └── test-reports/
-        └── <timestamp>/
-            ├── Test_Report_Viewer.html
-            ├── test-case-reports/
-            │   └── TC-*.md
-            ├── defect-reports/
-            │   └── DEFECT-*.md
-            ├── test-summary-report.md
-            ├── screenshots/
-            └── logs/
+        ├── Test_Report_Viewer.html
+        ├── test-case-reports/
+        │   └── TC-*.md
+        ├── defect-reports/
+        │   └── DEFECT-*.md
+        ├── test-summary-report.md
+        ├── screenshots/
+        ├── snapshots/
+        └── logs/
 ```
 
 ## Environment Configuration
@@ -228,7 +228,7 @@ The default is ~50 test cases. To change:
 ### Debugging
 - Check `logs/autonomous_test_<timestamp>.log` for detailed execution logs
 - Review `test_cases.json` for current test status
-- Look at `test-reports/<timestamp>/` for test artifacts
+- Look at `test-reports/` for test artifacts
 
 ## Important Timing Notes
 
