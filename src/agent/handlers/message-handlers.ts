@@ -106,11 +106,17 @@ export function handleCompactBoundary(msg: SDKCompactBoundaryMessage): void {
 	console.log(`\n${"═".repeat(60)}`);
 	console.log("[Context Compaction] Compaction Complete");
 	console.log("═".repeat(60));
-	console.log(`  Trigger Type:         ${metadata.trigger === "auto" ? "Automatic (context limit reached)" : "Manual (/compact command)"}`);
-	console.log(`  Pre-compaction:       ${preTokensK}K tokens (${metadata.pre_tokens.toLocaleString()} tokens)`);
+	console.log(
+		`  Trigger Type:         ${metadata.trigger === "auto" ? "Automatic (context limit reached)" : "Manual (/compact command)"}`,
+	);
+	console.log(
+		`  Pre-compaction:       ${preTokensK}K tokens (${metadata.pre_tokens.toLocaleString()} tokens)`,
+	);
 	console.log(`  Session ID:           ${msg.session_id}`);
 	console.log("─".repeat(60));
-	console.log("  Note: Conversation history has been summarized to reduce context.");
+	console.log(
+		"  Note: Conversation history has been summarized to reduce context.",
+	);
 	console.log("  The agent will continue with a fresh context window.");
 	console.log(`${"═".repeat(60)}\n`);
 }

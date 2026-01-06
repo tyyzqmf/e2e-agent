@@ -226,6 +226,54 @@ export function buildApiRoutes(services: ServiceContext) {
 		},
 
 		/**
+		 * GET /api/jobs/:id/screenshots/:filename - Get screenshot file
+		 */
+		"GET /api/jobs/:id/screenshots/:filename": (
+			req: BunRequest<"/api/jobs/:id/screenshots/:filename">,
+		) => {
+			try {
+				const jobId = req.params.id;
+				const filename = req.params.filename;
+				const job = jobManager.getJob(jobId);
+
+				if (!job) {
+					return errorResponse("Job not found", "JOB_NOT_FOUND", 404);
+				}
+
+				const screenshotPath = resultService.getScreenshotPath(jobId, filename);
+				if (!screenshotPath) {
+					return errorResponse(
+						"Screenshot not found",
+						"SCREENSHOT_NOT_FOUND",
+						404,
+					);
+				}
+
+				const file = Bun.file(screenshotPath);
+				const ext = filename.toLowerCase().split(".").pop() || "png";
+				const mimeTypes: Record<string, string> = {
+					png: "image/png",
+					jpg: "image/jpeg",
+					jpeg: "image/jpeg",
+					gif: "image/gif",
+					webp: "image/webp",
+				};
+
+				return withCors(
+					new Response(file, {
+						headers: {
+							"Content-Type": mimeTypes[ext] || "image/png",
+							"Cache-Control": "public, max-age=3600",
+						},
+					}),
+				);
+			} catch (error) {
+				logger.error("Get screenshot error", error);
+				return errorResponse("Failed to get screenshot", "INTERNAL_ERROR", 500);
+			}
+		},
+
+		/**
 		 * GET /api/jobs/:id/report - View HTML report
 		 */
 		"GET /api/jobs/:id/report": (req: BunRequest<"/api/jobs/:id/report">) => {

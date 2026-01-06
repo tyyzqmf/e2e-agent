@@ -28,7 +28,7 @@ describe("handleAssistantMessage", () => {
 
 		process.stdout.write = ((
 			str: string | Uint8Array,
-			...args: unknown[]
+			..._args: unknown[]
 		): boolean => {
 			stdoutWrites.push(String(str));
 			return true;
@@ -328,11 +328,13 @@ describe("handleCompactBoundary", () => {
 
 		handleCompactBoundary(msg);
 
+		expect(consoleLogs.some((log) => log.includes("Compaction Complete"))).toBe(
+			true,
+		);
 		expect(
-			consoleLogs.some((log) => log.includes("Compaction Complete")),
-		).toBe(true);
-		expect(
-			consoleLogs.some((log) => log.includes("Automatic (context limit reached)")),
+			consoleLogs.some((log) =>
+				log.includes("Automatic (context limit reached)"),
+			),
 		).toBe(true);
 		expect(consoleLogs.some((log) => log.includes("150.0K tokens"))).toBe(true);
 		expect(consoleLogs.some((log) => log.includes("test-session-123"))).toBe(

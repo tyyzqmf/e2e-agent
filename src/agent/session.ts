@@ -19,6 +19,7 @@ import {
 
 // Enable verbose logging for debugging with E2E_DEBUG=1
 const DEBUG_LOGGING = process.env.E2E_DEBUG === "1";
+
 import {
 	handleAssistantMessage,
 	handleCompactBoundary,
@@ -78,9 +79,13 @@ export async function runAgentSession(
 				// Debug logging for all system messages
 				if (DEBUG_LOGGING) {
 					const subtypeInfo = "subtype" in sysMsg ? sysMsg.subtype : "unknown";
-					console.log(`\n[DEBUG] System message received: subtype=${subtypeInfo}`);
+					console.log(
+						`\n[DEBUG] System message received: subtype=${subtypeInfo}`,
+					);
 					if (subtypeInfo === "compact_boundary") {
-						console.log(`[DEBUG] compact_metadata: ${JSON.stringify((sysMsg as SDKCompactBoundaryMessage).compact_metadata)}`);
+						console.log(
+							`[DEBUG] compact_metadata: ${JSON.stringify((sysMsg as SDKCompactBoundaryMessage).compact_metadata)}`,
+						);
 					}
 				}
 
@@ -98,10 +103,14 @@ export async function runAgentSession(
 						};
 						if (statusMsg.status === "compacting") {
 							console.log(`\n${"─".repeat(60)}`);
-							console.log("[Context Compaction] Starting context compaction...");
+							console.log(
+								"[Context Compaction] Starting context compaction...",
+							);
 							console.log("─".repeat(60));
 							console.log("  Status: Compacting conversation history");
-							console.log("  Note: This reduces context size to continue execution");
+							console.log(
+								"  Note: This reduces context size to continue execution",
+							);
 							console.log("─".repeat(60));
 						} else if (statusMsg.status !== null) {
 							// Log other status messages for debugging
@@ -136,13 +145,17 @@ export async function runAgentSession(
 
 					// Log full assistant message for debugging
 					if (DEBUG_LOGGING) {
-						console.error(`\n[DEBUG] Full error message: ${JSON.stringify(assistantMsg, null, 2)}`);
+						console.error(
+							`\n[DEBUG] Full error message: ${JSON.stringify(assistantMsg, null, 2)}`,
+						);
 					}
 
 					// Log any additional error details from the message
 					const msgAny = assistantMsg as Record<string, unknown>;
 					if (msgAny.error_details) {
-						console.error(`\nError details: ${JSON.stringify(msgAny.error_details, null, 2)}`);
+						console.error(
+							`\nError details: ${JSON.stringify(msgAny.error_details, null, 2)}`,
+						);
 					}
 					if (msgAny.error_message) {
 						console.error(`Error message: ${msgAny.error_message}`);

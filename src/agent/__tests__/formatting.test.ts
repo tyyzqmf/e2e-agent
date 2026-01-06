@@ -104,7 +104,7 @@ describe("formatToolResultOutput", () => {
 	});
 
 	test("truncates long result content for errors", () => {
-		const longError = "Error: " + "x".repeat(600);
+		const longError = `Error: ${"x".repeat(600)}`;
 		formatToolResultOutput(longError, true, 0.1, 100);
 
 		const errorLog = consoleLogs.find((log) => log.includes("[Error]"));
@@ -113,7 +113,7 @@ describe("formatToolResultOutput", () => {
 	});
 
 	test("truncates long blocked content", () => {
-		const longBlocked = "blocked " + "x".repeat(600);
+		const longBlocked = `blocked ${"x".repeat(600)}`;
 		formatToolResultOutput(longBlocked, false, 0.1, 100);
 
 		const blockedLog = consoleLogs.find((log) => log.includes("[BLOCKED]"));

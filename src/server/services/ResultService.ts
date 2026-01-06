@@ -395,6 +395,94 @@ export class ResultService {
 	}
 
 	/**
+	 * Get screenshot file path for a job
+	 *
+	 * @param jobId - Job ID
+	 * @param filename - Screenshot filename
+	 * @returns Path to screenshot file or null if not found
+	 */
+	getScreenshotPath(jobId: string, filename: string): string | null {
+		// Prevent directory traversal attacks
+		if (
+			filename.includes("..") ||
+			filename.includes("/") ||
+			filename.includes("\\")
+		) {
+			logger.warn(`Invalid screenshot filename: ${filename}`);
+			return null;
+		}
+
+		// Check all possible screenshot locations
+		const possiblePaths = [
+			// Direct in test-reports/screenshots/
+			join(
+				this.dataDir,
+				"reports",
+				jobId,
+				"test-reports",
+				"screenshots",
+				filename,
+			),
+			// In generations subdirectory
+			join(
+				this.dataDir,
+				"reports",
+				jobId,
+				"generations",
+				jobId,
+				"test-reports",
+				"screenshots",
+				filename,
+			),
+		];
+
+		// Also check timestamp subdirectories
+		const testReportsPaths = [
+			join(this.dataDir, "reports", jobId, "test-reports"),
+			join(
+				this.dataDir,
+				"reports",
+				jobId,
+				"generations",
+				jobId,
+				"test-reports",
+			),
+		];
+
+		for (const testReportsPath of testReportsPaths) {
+			if (existsSync(testReportsPath)) {
+				try {
+					const entries = readdirSync(testReportsPath, { withFileTypes: true });
+					// Find timestamp directories (format: YYYYMMDD-HHMMSS)
+					const timestampDirs = entries
+						.filter((e) => e.isDirectory() && /^\d{8}-\d{6}$/.test(e.name))
+						.map((e) => e.name)
+						.sort()
+						.reverse();
+
+					for (const dir of timestampDirs) {
+						possiblePaths.push(
+							join(testReportsPath, dir, "screenshots", filename),
+						);
+					}
+				} catch {
+					// Ignore errors
+				}
+			}
+		}
+
+		// Check each possible path
+		for (const path of possiblePaths) {
+			if (existsSync(path)) {
+				return path;
+			}
+		}
+
+		logger.debug(`Screenshot not found for job ${jobId}: ${filename}`);
+		return null;
+	}
+
+	/**
 	 * Get the report directory for a job
 	 *
 	 * @param jobId - Job ID
@@ -415,18 +503,20 @@ export class ResultService {
 
 		for (const path of paths) {
 			if (existsSync(path)) {
-				// Find the latest timestamp directory
+				// Find the latest timestamp directory (format: YYYYMMDD-HHMMSS)
 				try {
 					const entries = readdirSync(path, { withFileTypes: true });
-					const dirs = entries
-						.filter((e) => e.isDirectory())
+					// Only match directories with timestamp format
+					const timestampDirs = entries
+						.filter((e) => e.isDirectory() && /^\d{8}-\d{6}$/.test(e.name))
 						.map((e) => e.name)
 						.sort()
 						.reverse();
 
-					if (dirs.length > 0) {
-						return join(path, dirs[0]);
+					if (timestampDirs.length > 0) {
+						return join(path, timestampDirs[0]);
 					}
+					// No timestamp directory, return the test-reports directory itself
 					return path;
 				} catch {
 					return path;

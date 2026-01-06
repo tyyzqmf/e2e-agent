@@ -89,6 +89,11 @@
             line-height: 1;
         }
 
+        .header-actions {
+            display: flex;
+            gap: 15px;
+        }
+
         .back-btn {
             padding: 12px 24px;
             background: transparent;
@@ -1104,6 +1109,102 @@
             color: var(--col-paper);
         }
 
+        /* Screenshot Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            position: relative;
+            max-width: 90%;
+            max-height: 90%;
+            animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes scaleIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .modal-image {
+            max-width: 100%;
+            max-height: 85vh;
+            object-fit: contain;
+            border: 2px solid var(--col-paper);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            background: transparent;
+            border: 1px solid var(--col-paper);
+            color: var(--col-paper);
+            width: 36px;
+            height: 36px;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-close:hover {
+            background: var(--col-paper);
+            color: var(--col-void);
+        }
+
+        .modal-filename {
+            position: absolute;
+            bottom: -35px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: var(--col-paper);
+            font-family: var(--font-mono);
+            font-size: 11px;
+            letter-spacing: 0.1em;
+            opacity: 0.8;
+        }
+
+        .modal-loading {
+            color: var(--col-paper);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            letter-spacing: 0.1em;
+        }
+
+        .modal-error {
+            color: var(--col-accent);
+            font-family: var(--font-mono);
+            font-size: 12px;
+            padding: 20px;
+            border: 1px solid var(--col-accent);
+            background: rgba(232, 93, 74, 0.1);
+        }
+
         .empty-test-cases {
             text-align: center;
             padding: 60px 40px;
@@ -1121,6 +1222,16 @@
             .header {
                 flex-direction: column;
                 gap: 15px;
+            }
+
+            .header-actions {
+                width: 100%;
+                flex-direction: column;
+            }
+
+            .back-btn {
+                width: 100%;
+                text-align: center;
             }
 
             .status-panel,
@@ -1166,11 +1277,23 @@
     </style>
 </head>
 <body>
+    <!-- Screenshot Modal -->
+    <div id="screenshotModal" class="modal-overlay" onclick="closeScreenshotModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <button class="modal-close" onclick="closeScreenshotModal()">&times;</button>
+            <img id="modalImage" class="modal-image" src="" alt="Screenshot">
+            <div id="modalFilename" class="modal-filename"></div>
+        </div>
+    </div>
+
     <div class="container">
         <!-- Header -->
         <div class="header">
             <h1 class="header-title">Job Status</h1>
-            <a href="/" class="back-btn">New Job</a>
+            <div class="header-actions">
+                <a href="/jobs" class="back-btn">Dashboard</a>
+                <a href="/" class="back-btn">New Job</a>
+            </div>
         </div>
 
         <!-- Alert Container -->
@@ -1914,7 +2037,7 @@
                     <div class="test-case-section">
                         <div class="test-case-section-title">Evidence (Screenshots)</div>
                         <div class="test-case-screenshots">
-                            ${tc.evidence.screenshots.map(s => `<span class="test-case-screenshot">${escapeHtml(s)}</span>`).join('')}
+                            ${tc.evidence.screenshots.map(s => `<span class="test-case-screenshot" onclick="openScreenshotModal('${escapeHtml(s)}')">${escapeHtml(s)}</span>`).join('')}
                         </div>
                     </div>
                 `;
@@ -1987,6 +2110,59 @@
                 if (alert) alert.remove();
             }, 3000);
         }
+
+        // Screenshot Modal Functions
+        function openScreenshotModal(filename) {
+            const modal = document.getElementById('screenshotModal');
+            const modalImage = document.getElementById('modalImage');
+            const modalFilename = document.getElementById('modalFilename');
+
+            // Build the screenshot URL
+            const screenshotUrl = `/api/jobs/${jobId}/screenshots/${encodeURIComponent(filename)}`;
+
+            // Show modal with loading state
+            modal.classList.add('active');
+            modalFilename.textContent = filename;
+
+            // Set image source
+            modalImage.src = screenshotUrl;
+
+            // Handle image load error
+            modalImage.onerror = function() {
+                modalImage.style.display = 'none';
+                modalFilename.innerHTML = `<span class="modal-error">Failed to load screenshot: ${escapeHtml(filename)}</span>`;
+            };
+
+            modalImage.onload = function() {
+                modalImage.style.display = 'block';
+            };
+
+            // Prevent body scroll when modal is open
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeScreenshotModal(event) {
+            // If called with event, only close if clicking on overlay (not content)
+            if (event && event.target !== event.currentTarget) {
+                return;
+            }
+
+            const modal = document.getElementById('screenshotModal');
+            const modalImage = document.getElementById('modalImage');
+
+            modal.classList.remove('active');
+            modalImage.src = '';
+
+            // Restore body scroll
+            document.body.style.overflow = '';
+        }
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeScreenshotModal();
+            }
+        });
 
         window.addEventListener('beforeunload', () => {
             stopAutoRefresh();

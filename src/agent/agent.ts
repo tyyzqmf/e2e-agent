@@ -6,7 +6,7 @@
  * Uses Claude Agent SDK to execute test planning and test execution sessions.
  */
 
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createSdkOptions } from "./client.ts";
 import type { AgentOptions } from "./config.ts";
@@ -64,7 +64,9 @@ export async function updateHtmlReportCosts(projectDir: string): Promise<void> {
 		// Read usage statistics
 		const usageStatsFile = join(projectDir, "usage_statistics.json");
 		if (!existsSync(usageStatsFile)) {
-			console.log("[Warning] usage_statistics.json not found, skipping HTML cost update");
+			console.log(
+				"[Warning] usage_statistics.json not found, skipping HTML cost update",
+			);
 			return;
 		}
 
@@ -74,7 +76,9 @@ export async function updateHtmlReportCosts(projectDir: string): Promise<void> {
 		// Find the latest test-reports directory
 		const testReportsDir = join(projectDir, "test-reports");
 		if (!existsSync(testReportsDir)) {
-			console.log("[Warning] test-reports directory not found, skipping HTML cost update");
+			console.log(
+				"[Warning] test-reports directory not found, skipping HTML cost update",
+			);
 			return;
 		}
 
@@ -82,7 +86,9 @@ export async function updateHtmlReportCosts(projectDir: string): Promise<void> {
 		const htmlReportFile = join(testReportsDir, "Test_Report_Viewer.html");
 
 		if (!existsSync(htmlReportFile)) {
-			console.log("[Warning] Test_Report_Viewer.html not found, skipping cost update");
+			console.log(
+				"[Warning] Test_Report_Viewer.html not found, skipping cost update",
+			);
 			return;
 		}
 
@@ -92,7 +98,7 @@ export async function updateHtmlReportCosts(projectDir: string): Promise<void> {
 		// Calculate total duration from all sessions
 		const totalDurationMs = usageStats.sessions.reduce(
 			(sum: number, s: { durationMs: number }) => sum + s.durationMs,
-			0
+			0,
 		);
 
 		// Prepare replacement values
@@ -105,25 +111,25 @@ export async function updateHtmlReportCosts(projectDir: string): Promise<void> {
 		// Pattern: <div class="cost-value">$X.XX</div> followed by <div class="cost-label">Total Cost</div>
 		htmlContent = htmlContent.replace(
 			/(<div class="cost-value">)\$[\d.]+(<\/div>\s*<div class="cost-label">Total Cost<\/div>)/,
-			`$1${totalCost}$2`
+			`$1${totalCost}$2`,
 		);
 
 		// Update total tokens
 		htmlContent = htmlContent.replace(
 			/(<div class="cost-value">)[\d.]+[KM]?(<\/div>\s*<div class="cost-label">Total Tokens<\/div>)/,
-			`$1${totalTokens}$2`
+			`$1${totalTokens}$2`,
 		);
 
 		// Update duration
 		htmlContent = htmlContent.replace(
 			/(<div class="cost-value">)\d+m \d+s(<\/div>\s*<div class="cost-label">Duration<\/div>)/,
-			`$1${totalDuration}$2`
+			`$1${totalDuration}$2`,
 		);
 
 		// Update sessions count
 		htmlContent = htmlContent.replace(
 			/(<div class="cost-value">)\d+(<\/div>\s*<div class="cost-label">Sessions<\/div>)/,
-			`$1${totalSessions}$2`
+			`$1${totalSessions}$2`,
 		);
 
 		// Write updated HTML

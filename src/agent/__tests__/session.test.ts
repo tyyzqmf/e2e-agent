@@ -7,7 +7,7 @@
  * - Session result structure
  */
 
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 import { SessionStatus } from "../types/index.ts";
 
 /**

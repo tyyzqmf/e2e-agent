@@ -279,7 +279,9 @@ describe("AuthConfig Type", () => {
 		const config = await configureAuthentication();
 
 		expect(typeof config.useBedrock).toBe("boolean");
-		expect(config.awsRegion === null || typeof config.awsRegion === "string").toBe(true);
+		expect(
+			config.awsRegion === null || typeof config.awsRegion === "string",
+		).toBe(true);
 		expect(typeof config.envVars).toBe("object");
 
 		restoreEnvVars();

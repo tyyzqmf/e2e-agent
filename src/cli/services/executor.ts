@@ -10,7 +10,6 @@ import {
 	mkdirSync,
 	readFileSync,
 	writeFileSync,
-	type WriteStream,
 } from "node:fs";
 import { join } from "node:path";
 import { type Subprocess, spawn } from "bun";
