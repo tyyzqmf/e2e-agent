@@ -4,7 +4,14 @@
  * Standalone test executor using SQLite-based job queue, replacing run_executor.py
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+	createWriteStream,
+	existsSync,
+	mkdirSync,
+	readFileSync,
+	writeFileSync,
+	type WriteStream,
+} from "node:fs";
 import { join } from "node:path";
 import { type Subprocess, spawn } from "bun";
 import {
@@ -184,13 +191,17 @@ export class TestExecutor {
 			const stdoutPath = join(logDir, "execution_stdout.log");
 			const stderrPath = join(logDir, "execution_stderr.log");
 
-			// Start process
+			// Create write streams for incremental logging (ensures all output is captured even on crash)
+			const stdoutStream = createWriteStream(stdoutPath, { flags: "a" });
+			const stderrStream = createWriteStream(stderrPath, { flags: "a" });
+
+			// Start process with pipe mode for proper output capture
 			this.currentProcess = spawn({
 				cmd,
 				cwd: this.config.baseDir,
 				env,
-				stdout: Bun.file(stdoutPath),
-				stderr: Bun.file(stderrPath),
+				stdout: "pipe",
+				stderr: "pipe",
 				stdin: "ignore",
 			});
 
@@ -198,11 +209,46 @@ export class TestExecutor {
 			this.jobService.setProcessPid(jobId, this.currentProcess.pid);
 			log("INFO", `Job ${jobId} started with PID ${this.currentProcess.pid}`);
 
+			// Stream stdout to file incrementally
+			const streamStdout = async () => {
+				if (!this.currentProcess?.stdout) return;
+				try {
+					for await (const chunk of this.currentProcess.stdout) {
+						stdoutStream.write(chunk);
+					}
+				} catch {
+					// Stream closed, ignore
+				}
+			};
+
+			// Stream stderr to file incrementally
+			const streamStderr = async () => {
+				if (!this.currentProcess?.stderr) return;
+				try {
+					for await (const chunk of this.currentProcess.stderr) {
+						stderrStream.write(chunk);
+					}
+				} catch {
+					// Stream closed, ignore
+				}
+			};
+
+			// Start streaming (non-blocking)
+			const stdoutPromise = streamStdout();
+			const stderrPromise = streamStderr();
+
 			// Start stop check timer
 			this.startStopCheck(jobId);
 
-			// Wait for process
+			// Wait for process and streams to complete
 			const exitCode = await this.currentProcess.exited;
+
+			// Wait for streams to finish flushing
+			await Promise.allSettled([stdoutPromise, stderrPromise]);
+
+			// Close streams
+			stdoutStream.end();
+			stderrStream.end();
 
 			// Clear stop check timer
 			if (this.stopCheckTimer) {

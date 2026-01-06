@@ -133,6 +133,20 @@ export async function runAgentSession(
 					}
 
 					console.error(errorMessage);
+
+					// Log full assistant message for debugging
+					if (DEBUG_LOGGING) {
+						console.error(`\n[DEBUG] Full error message: ${JSON.stringify(assistantMsg, null, 2)}`);
+					}
+
+					// Log any additional error details from the message
+					const msgAny = assistantMsg as Record<string, unknown>;
+					if (msgAny.error_details) {
+						console.error(`\nError details: ${JSON.stringify(msgAny.error_details, null, 2)}`);
+					}
+					if (msgAny.error_message) {
+						console.error(`Error message: ${msgAny.error_message}`);
+					}
 					continue;
 				}
 
@@ -219,6 +233,28 @@ export async function runAgentSession(
 		errorOccurred = true;
 		errorMessage = error instanceof Error ? error.message : String(error);
 		console.error(`\nAPI Error: ${errorMessage}`);
+
+		// Log full stack trace for debugging
+		if (error instanceof Error && error.stack) {
+			console.error(`\nStack trace:\n${error.stack}`);
+		}
+
+		// Log additional error details if available (e.g., from SDK errors)
+		if (error && typeof error === "object") {
+			const errObj = error as Record<string, unknown>;
+			if (errObj.cause) {
+				console.error(`\nCaused by: ${JSON.stringify(errObj.cause, null, 2)}`);
+			}
+			if (errObj.code) {
+				console.error(`Error code: ${errObj.code}`);
+			}
+			if (errObj.status) {
+				console.error(`HTTP status: ${errObj.status}`);
+			}
+			if (errObj.response) {
+				console.error(`Response: ${JSON.stringify(errObj.response, null, 2)}`);
+			}
+		}
 	}
 
 	console.log(`\n${"-".repeat(70)}\n`);
