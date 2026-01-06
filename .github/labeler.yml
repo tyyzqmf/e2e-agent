@@ -1,0 +1,45 @@
+# Label configuration for PR labeler
+# https://github.com/actions/labeler
+
+agent:
+  - changed-files:
+      - any-glob-to-any-file: 'src/agent/**/*'
+
+server:
+  - changed-files:
+      - any-glob-to-any-file: 'src/server/**/*'
+
+cli:
+  - changed-files:
+      - any-glob-to-any-file: 'src/cli/**/*'
+      - any-glob-to-any-file: 'e2e'
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file: '**/*.md'
+      - any-glob-to-any-file: 'docs/**/*'
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file: '**/*.test.ts'
+      - any-glob-to-any-file: '**/__tests__/**/*'
+
+prompts:
+  - changed-files:
+      - any-glob-to-any-file: 'src/agent/prompts/**/*'
+
+templates:
+  - changed-files:
+      - any-glob-to-any-file: 'src/agent/templates/**/*'
+
+config:
+  - changed-files:
+      - any-glob-to-any-file: '*.json'
+      - any-glob-to-any-file: '*.yml'
+      - any-glob-to-any-file: '*.yaml'
+      - any-glob-to-any-file: '.github/**/*'
+
+dependencies:
+  - changed-files:
+      - any-glob-to-any-file: 'package.json'
+      - any-glob-to-any-file: 'bun.lockb'
