@@ -107,30 +107,45 @@ export async function updateHtmlReportCosts(projectDir: string): Promise<void> {
 		const totalDuration = formatDuration(totalDurationMs);
 		const totalSessions = summary.totalSessions.toString();
 
-		// Update cost statistics in HTML
-		// Pattern: <div class="cost-value">$X.XX</div> followed by <div class="cost-label">Total Cost</div>
+		// Replace entire cost-grid section to handle any malformed AI-generated HTML
+		// This is more robust than trying to match individual cost-value/cost-label pairs
+		const costGridHtml = `<div class="cost-grid">
+                    <div class="cost-item">
+                        <div class="cost-value">${totalCost}</div>
+                        <div class="cost-label">Total Cost</div>
+                    </div>
+                    <div class="cost-item">
+                        <div class="cost-value">${totalTokens}</div>
+                        <div class="cost-label">Total Tokens</div>
+                    </div>
+                    <div class="cost-item">
+                        <div class="cost-value">${totalDuration}</div>
+                        <div class="cost-label">Duration</div>
+                    </div>
+                    <div class="cost-item">
+                        <div class="cost-value">${totalSessions}</div>
+                        <div class="cost-label">Sessions</div>
+                    </div>
+                </div>`;
+
+		// Match the entire cost-grid div and replace it
+		// Structure: <div class="cost-grid">..items..</div></div></section>
+		// (cost-grid closes, then cost-card closes, then section closes)
 		htmlContent = htmlContent.replace(
-			/(<div class="cost-value">)\$[\d.]+(<\/div>\s*<div class="cost-label">Total Cost<\/div>)/,
-			`$1${totalCost}$2`,
+			/<div class="cost-grid">[\s\S]*?<\/div>\s*<\/div>\s*<\/section>/,
+			`${costGridHtml}\n            </div>\n        </section>`,
 		);
 
-		// Update total tokens
-		htmlContent = htmlContent.replace(
-			/(<div class="cost-value">)[\d.]+[KM]?(<\/div>\s*<div class="cost-label">Total Tokens<\/div>)/,
-			`$1${totalTokens}$2`,
-		);
-
-		// Update duration
-		htmlContent = htmlContent.replace(
-			/(<div class="cost-value">)\d+m \d+s(<\/div>\s*<div class="cost-label">Duration<\/div>)/,
-			`$1${totalDuration}$2`,
-		);
-
-		// Update sessions count
-		htmlContent = htmlContent.replace(
-			/(<div class="cost-value">)\d+(<\/div>\s*<div class="cost-label">Sessions<\/div>)/,
-			`$1${totalSessions}$2`,
-		);
+		// Fix Execution Logs link to use API endpoint
+		// Extract jobId from projectDir (format: .../reports/{jobId} or .../generations/{jobId})
+		const jobId = projectDir.split("/").pop();
+		if (jobId) {
+			// Replace relative log path with API endpoint
+			htmlContent = htmlContent.replace(
+				/<a href="[^"]*execution[^"]*\.log"([^>]*)>(\s*<span class="link-icon">[^<]*<\/span>\s*<span class="link-text">)[^<]*(Execution|Log)[^<]*(<\/span>\s*<\/a>)/gi,
+				`<a href="/api/jobs/${jobId}/logs?format=text" target="_blank"$1>$2Execution Logs$4`,
+			);
+		}
 
 		// Write updated HTML
 		writeFileSync(htmlReportFile, htmlContent, "utf-8");
@@ -140,6 +155,9 @@ export async function updateHtmlReportCosts(projectDir: string): Promise<void> {
 		console.log(`  - Total Tokens: ${totalTokens}`);
 		console.log(`  - Duration: ${totalDuration}`);
 		console.log(`  - Sessions: ${totalSessions}`);
+		if (jobId) {
+			console.log(`  - Execution Logs: /api/jobs/${jobId}/logs`);
+		}
 	} catch (error) {
 		console.log(`[Warning] Failed to update HTML report costs: ${error}`);
 	}

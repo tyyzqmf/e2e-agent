@@ -136,6 +136,10 @@ async function matchParameterizedRoute(
 			parts: ["api", "jobs", ":id", "download"],
 		},
 		{
+			pattern: "GET /api/jobs/:id/screenshots/:filename",
+			parts: ["api", "jobs", ":id", "screenshots", ":filename"],
+		},
+		{
 			pattern: "POST /api/jobs/:id/stop",
 			parts: ["api", "jobs", ":id", "stop"],
 		},

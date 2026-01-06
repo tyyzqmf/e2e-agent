@@ -156,8 +156,25 @@ This is the main deliverable and is required for report completion.
 - Percentages: Pass rate, Fail rate, Blocked rate, Not Run rate
 - Test Cases Overview: Id, Title, Module, Priority, Status
 - Test Case Details: Id, Title, Module, Priority, Status, Test Steps, Expected Result, Actual Result, Evidence
-- Cost Statistics: Total cost (from `usage_statistics.json`), Total tokens, Duration, Sessions
+- Cost Statistics: Use values from `usage_statistics.json` **summary** section:
+  - Total Cost: `summary.totalCostUsd` (format as `$X.XX`)
+  - Total Tokens: `summary.totalTokens` (format large numbers like `1.31M`)
+  - Duration: Calculate from sum of all `sessions[].durationMs` (format as minutes)
+  - Sessions: `summary.totalSessions`
 - Related Documents: Links to `test-summary-report.md` and other logs
+
+**IMPORTANT: Cost Data Extraction**
+When reading `usage_statistics.json`, always use the **summary** object for totals:
+```json
+{
+  "summary": {
+    "totalSessions": 3,
+    "totalCostUsd": 1.35,    // <-- Use this for Total Cost
+    "totalTokens": 1308054   // <-- Use this for Total Tokens
+  }
+}
+```
+Do NOT use individual session costs - always use the summary totals.
 
 **Image/File Paths:**
 - Use relative paths from HTML location: `screenshots/01_TC-001_login_page.png`
