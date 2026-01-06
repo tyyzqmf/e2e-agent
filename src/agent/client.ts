@@ -6,6 +6,7 @@
  * This module provides authentication and options building.
  */
 
+import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type {
@@ -174,9 +175,7 @@ export function writeSecuritySettings(
  * Generate a unique session ID for cache isolation
  */
 function generateSessionId(): string {
-	const timestamp = Date.now();
-	const random = Math.random().toString(36).substring(2, 8);
-	return `${timestamp}-${random}`;
+	return randomUUID();
 }
 
 /**
