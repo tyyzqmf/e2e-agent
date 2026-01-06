@@ -36,9 +36,8 @@ export class TokenUsageTracker {
 	/**
 	 * Record a completed session's usage data.
 	 *
-	 * @param params.sdkCostUsd - Optional cost from SDK (preferred over local calculation)
-	 *                           SDK's total_cost_usd is more accurate as it uses Anthropic's
-	 *                           official pricing. Local calculation is used as fallback.
+	 * @param params.sdkCostUsd - Optional cost from SDK (for comparison logging only)
+	 *                           Local calculation is always used for transparency.
 	 */
 	recordSession(params: {
 		sessionId: string;
@@ -49,28 +48,18 @@ export class TokenUsageTracker {
 		tokens: TokenUsage;
 		sdkCostUsd?: number | null;
 	}): SessionRecord {
-		// Use SDK cost if available, otherwise calculate locally (fallback)
-		const useLocalCalculation =
-			params.sdkCostUsd === undefined || params.sdkCostUsd === null;
-
-		// Calculate costs locally (needed for breakdown even when using SDK total)
-		const localCosts = this.pricingCalculator.calculateCost(
+		// Always use local calculation for cost (more transparent and verifiable)
+		const costs = this.pricingCalculator.calculateCost(
 			params.tokens,
 			params.model,
 		);
 
-		// Use SDK total cost if available, otherwise use local calculation
-		const costs = useLocalCalculation
-			? localCosts
-			: {
-					...localCosts,
-					// Override total with SDK value (more accurate)
-					totalCost: params.sdkCostUsd,
-				};
-
-		if (!useLocalCalculation) {
+		// Log comparison if SDK cost is available
+		if (params.sdkCostUsd !== undefined && params.sdkCostUsd !== null) {
+			const diff = params.sdkCostUsd - costs.totalCost;
+			const diffPercent = ((diff / costs.totalCost) * 100).toFixed(1);
 			console.log(
-				`[Cost] Using SDK-provided cost: $${params.sdkCostUsd?.toFixed(4)}`,
+				`[Cost] Local: $${costs.totalCost.toFixed(4)}, SDK: $${params.sdkCostUsd.toFixed(4)} (diff: ${diff >= 0 ? "+" : ""}$${diff.toFixed(4)}, ${diffPercent}%)`,
 			);
 		}
 

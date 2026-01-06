@@ -73,7 +73,7 @@ export const ENABLE_PROMPT_CACHING = true;
  *
  * Recommended: Enable for long-running multi-session tasks
  */
-export const ISOLATE_SESSION_CACHE = true;
+export const ISOLATE_SESSION_CACHE = false;
 
 /**
  * Minimum tokens required for caching (Anthropic requirement)
