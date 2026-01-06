@@ -99,9 +99,13 @@ ls -la test-reports/snapshots/
 ls -la test-reports/logs/
 ```
 
-**2.2 Create missing directories if needed**
+**2.2 Create missing directories and copy logs**
 ```bash
 mkdir -p test-reports/test-case-reports
+mkdir -p test-reports/logs
+
+# Copy execution log if it exists
+cp ./execution_stdout.log test-reports/logs/ 2>/dev/null || true
 ```
 
 ---
@@ -161,7 +165,12 @@ This is the main deliverable and is required for report completion.
   - Total Tokens: `summary.totalTokens` (format large numbers like `1.31M`)
   - Duration: Calculate from sum of all `sessions[].durationMs` (format as minutes)
   - Sessions: `summary.totalSessions`
-- Related Documents: Links to `test-summary-report.md` and other logs
+- Related Documents: Include these links:
+  - `test-summary-report.md` (Test Summary Report, icon: 📊)
+  - `test-case-reports/` (Test Case Reports, icon: 📝)
+  - `screenshots/` (Screenshots Archive, icon: 🖼️)
+  - `snapshots/` (DOM Snapshots, icon: 🗂️)
+  - `logs/execution_stdout.log` (Execution Logs, icon: 📋)
 
 **IMPORTANT: Cost Data Extraction**
 When reading `usage_statistics.json`, always use the **summary** object for totals:

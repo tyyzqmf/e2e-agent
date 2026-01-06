@@ -136,17 +136,6 @@ export async function updateHtmlReportCosts(projectDir: string): Promise<void> {
 			`${costGridHtml}\n            </div>\n        </section>`,
 		);
 
-		// Fix Execution Logs link to use API endpoint
-		// Extract jobId from projectDir (format: .../reports/{jobId} or .../generations/{jobId})
-		const jobId = projectDir.split("/").pop();
-		if (jobId) {
-			// Replace relative log path with API endpoint
-			htmlContent = htmlContent.replace(
-				/<a href="[^"]*execution[^"]*\.log"([^>]*)>(\s*<span class="link-icon">[^<]*<\/span>\s*<span class="link-text">)[^<]*(Execution|Log)[^<]*(<\/span>\s*<\/a>)/gi,
-				`<a href="/api/jobs/${jobId}/logs?format=text" target="_blank"$1>$2Execution Logs$4`,
-			);
-		}
-
 		// Write updated HTML
 		writeFileSync(htmlReportFile, htmlContent, "utf-8");
 
@@ -155,9 +144,6 @@ export async function updateHtmlReportCosts(projectDir: string): Promise<void> {
 		console.log(`  - Total Tokens: ${totalTokens}`);
 		console.log(`  - Duration: ${totalDuration}`);
 		console.log(`  - Sessions: ${totalSessions}`);
-		if (jobId) {
-			console.log(`  - Execution Logs: /api/jobs/${jobId}/logs`);
-		}
 	} catch (error) {
 		console.log(`[Warning] Failed to update HTML report costs: ${error}`);
 	}
