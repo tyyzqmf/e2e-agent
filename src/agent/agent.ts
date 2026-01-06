@@ -78,19 +78,8 @@ export async function updateHtmlReportCosts(projectDir: string): Promise<void> {
 			return;
 		}
 
-		// Get the latest report directory (format: YYYYMMDD-HHMMSS)
-		const reportDirs = readdirSync(testReportsDir)
-			.filter((d) => /^\d{8}-\d{6}$/.test(d))
-			.sort()
-			.reverse();
-
-		if (reportDirs.length === 0) {
-			console.log("[Warning] No report directories found, skipping HTML cost update");
-			return;
-		}
-
-		const latestReportDir = join(testReportsDir, reportDirs[0]);
-		const htmlReportFile = join(latestReportDir, "Test_Report_Viewer.html");
+		// Look for Test_Report_Viewer.html directly in test-reports/ (flat structure per CLAUDE.md)
+		const htmlReportFile = join(testReportsDir, "Test_Report_Viewer.html");
 
 		if (!existsSync(htmlReportFile)) {
 			console.log("[Warning] Test_Report_Viewer.html not found, skipping cost update");
@@ -178,8 +167,12 @@ export async function runAutonomousTestingAgent(
 		mkdirSync(projectDir, { recursive: true });
 	}
 
-	// Initialize token usage tracking
+	// Initialize token usage tracking with cache refresh
 	const pricingCalculator = new PricingCalculator();
+	// Pre-refresh pricing cache if stale (async fetch not possible in sync calculateCost)
+	if (!pricingCalculator.isCacheValid()) {
+		await pricingCalculator.updatePriceCache();
+	}
 	const usageTracker = new TokenUsageTracker(projectDir, pricingCalculator);
 
 	// Check if this is a fresh start or continuation

@@ -245,9 +245,17 @@ export class PricingCalculator {
 			// Check file size synchronously isn't easily done with Bun.file
 			// Use a simpler approach
 			const content = require("node:fs").readFileSync(this.cacheFile, "utf-8");
-			const cacheData = JSON.parse(content) as PricingCache;
+			const cacheData = JSON.parse(content) as PricingCache & {
+				fetched_at?: number;
+			};
 
-			const fetchedAt = cacheData.fetchedAt ?? 0;
+			// Support both camelCase (new) and snake_case (legacy) field names
+			// Also handle seconds vs milliseconds timestamp format
+			let fetchedAt = cacheData.fetchedAt ?? cacheData.fetched_at ?? 0;
+			// If timestamp looks like seconds (< 10 billion), convert to milliseconds
+			if (fetchedAt > 0 && fetchedAt < 10_000_000_000) {
+				fetchedAt = fetchedAt * 1000;
+			}
 			const ageHours = (Date.now() - fetchedAt) / 3600000;
 
 			return ageHours < this.cacheValidityHours;

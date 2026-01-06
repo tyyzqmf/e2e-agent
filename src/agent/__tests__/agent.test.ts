@@ -121,8 +121,8 @@ describe("updateHtmlReportCosts", () => {
 		).toBe(true);
 	});
 
-	test("warns when no report directories found", async () => {
-		// Create usage stats and empty test-reports
+	test("warns when Test_Report_Viewer.html not found", async () => {
+		// Create usage stats and test-reports directory without HTML file (flat structure)
 		const usageStats = {
 			summary: { totalCostUsd: 1.5, totalTokens: 50000, totalSessions: 3 },
 			sessions: [{ durationMs: 60000 }],
@@ -137,28 +137,6 @@ describe("updateHtmlReportCosts", () => {
 		await updateHtmlReportCosts(testDir);
 
 		expect(
-			consoleLogs.some((log) => log.includes("No report directories found")),
-		).toBe(true);
-	});
-
-	test("warns when Test_Report_Viewer.html not found", async () => {
-		// Create usage stats and report directory but no HTML file
-		const usageStats = {
-			summary: { totalCostUsd: 1.5, totalTokens: 50000, totalSessions: 3 },
-			sessions: [{ durationMs: 60000 }],
-		};
-		writeFileSync(
-			join(testDir, "usage_statistics.json"),
-			JSON.stringify(usageStats),
-			"utf-8",
-		);
-		mkdirSync(join(testDir, "test-reports", "20250101-120000"), {
-			recursive: true,
-		});
-
-		await updateHtmlReportCosts(testDir);
-
-		expect(
 			consoleLogs.some((log) =>
 				log.includes("Test_Report_Viewer.html not found"),
 			),
@@ -166,8 +144,8 @@ describe("updateHtmlReportCosts", () => {
 	});
 
 	test("updates HTML report with cost statistics", async () => {
-		// Create full directory structure
-		const reportDir = join(testDir, "test-reports", "20250101-120000");
+		// Create flat directory structure (per CLAUDE.md)
+		const reportDir = join(testDir, "test-reports");
 		mkdirSync(reportDir, { recursive: true });
 
 		// Create usage stats
@@ -213,75 +191,6 @@ describe("updateHtmlReportCosts", () => {
 		expect(consoleLogs.some((log) => log.includes("Sessions: 5"))).toBe(true);
 	});
 
-	test("uses latest report directory", async () => {
-		// Create multiple report directories
-		mkdirSync(join(testDir, "test-reports", "20250101-100000"), {
-			recursive: true,
-		});
-		mkdirSync(join(testDir, "test-reports", "20250101-120000"), {
-			recursive: true,
-		});
-		mkdirSync(join(testDir, "test-reports", "20250101-110000"), {
-			recursive: true,
-		});
-
-		// Create usage stats
-		const usageStats = {
-			summary: { totalCostUsd: 1.0, totalTokens: 10000, totalSessions: 1 },
-			sessions: [{ durationMs: 60000 }],
-		};
-		writeFileSync(
-			join(testDir, "usage_statistics.json"),
-			JSON.stringify(usageStats),
-			"utf-8",
-		);
-
-		// Only create HTML in the "latest" directory (20250101-120000)
-		const htmlContent = `
-			<div class="cost-value">$0.00</div>
-			<div class="cost-label">Total Cost</div>
-		`;
-		writeFileSync(
-			join(testDir, "test-reports", "20250101-120000", "Test_Report_Viewer.html"),
-			htmlContent,
-		);
-
-		await updateHtmlReportCosts(testDir);
-
-		// Should find HTML in the latest directory
-		expect(
-			consoleLogs.some((log) => log.includes("Updated HTML report costs")),
-		).toBe(true);
-	});
-
-	test("handles invalid report directory names gracefully", async () => {
-		// Create usage stats
-		const usageStats = {
-			summary: { totalCostUsd: 1.0, totalTokens: 10000, totalSessions: 1 },
-			sessions: [{ durationMs: 60000 }],
-		};
-		writeFileSync(
-			join(testDir, "usage_statistics.json"),
-			JSON.stringify(usageStats),
-			"utf-8",
-		);
-
-		// Create test-reports with invalid directory names
-		mkdirSync(join(testDir, "test-reports", "invalid-name"), {
-			recursive: true,
-		});
-		mkdirSync(join(testDir, "test-reports", "another-invalid"), {
-			recursive: true,
-		});
-
-		await updateHtmlReportCosts(testDir);
-
-		// Should warn about no valid report directories
-		expect(
-			consoleLogs.some((log) => log.includes("No report directories found")),
-		).toBe(true);
-	});
-
 	test("handles JSON parse error gracefully", async () => {
 		// Create invalid JSON in usage stats
 		writeFileSync(
@@ -298,7 +207,8 @@ describe("updateHtmlReportCosts", () => {
 	});
 
 	test("calculates total duration from all sessions", async () => {
-		const reportDir = join(testDir, "test-reports", "20250101-120000");
+		// Create flat directory structure (per CLAUDE.md)
+		const reportDir = join(testDir, "test-reports");
 		mkdirSync(reportDir, { recursive: true });
 
 		// Create usage stats with multiple sessions

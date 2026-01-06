@@ -176,8 +176,7 @@ export async function runAgentSession(
 						const totalTokens =
 							usage.inputTokens +
 							usage.outputTokens +
-							usage.cacheReadInputTokens +
-							usage.cacheCreationInputTokens;
+							usage.cacheReadInputTokens;
 						const ctxWindow = usage.contextWindow;
 						const usagePercent =
 							ctxWindow > 0 ? (totalTokens / ctxWindow) * 100 : 0;
