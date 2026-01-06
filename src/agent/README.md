@@ -32,8 +32,12 @@ export ANTHROPIC_API_KEY='your-api-key-here'
 
 **Option 2 - AWS Bedrock:**
 ```bash
-export USE_AWS_BEDROCK=true
+export CLAUDE_CODE_USE_BEDROCK=1
 export AWS_REGION=us-east-1  # or your preferred region
+
+# Recommended output token settings for Bedrock
+export CLAUDE_CODE_MAX_OUTPUT_TOKENS=4096
+export MAX_THINKING_TOKENS=1024
 
 # Configure AWS credentials (choose one):
 aws configure  # AWS CLI method
@@ -298,7 +302,7 @@ This is normal. The agent is generating 200 detailed items (features or test cas
 The agent tried to run a command not in the allowlist. This is the security system working as intended. If needed, add the command to `ALLOWED_COMMANDS` in `security.py`.
 
 **"API key/credentials not set"**
-Ensure `ANTHROPIC_API_KEY` is exported (for Anthropic API) or `USE_AWS_BEDROCK=true` with AWS credentials configured (for AWS Bedrock).
+Ensure `ANTHROPIC_API_KEY` is exported (for Anthropic API) or `CLAUDE_CODE_USE_BEDROCK=1` with AWS credentials configured (for AWS Bedrock).
 
 **"Chrome DevTools MCP not available" (Testing Mode)**
 Ensure you have the latest version of Claude Code installed with MCP support.

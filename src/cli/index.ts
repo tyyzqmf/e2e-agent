@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+
 /**
  * E2E Testing Framework CLI
  *
@@ -16,34 +17,31 @@
  *   status                   Show service status
  */
 
-import {
-  printHeader,
-  printSuccess,
-  printError,
-  ensureDirectories,
-  PROJECT_ROOT,
-} from "./utils.ts";
-import {
-  checkRequirements,
-  setupEnvironment,
-} from "./env-check.ts";
-import {
-  startExecutor,
-  startBun,
-  startAll,
-  stopExecutor,
-  stopBun,
-  stopAll,
-} from "./commands/services.ts";
 import { handleJobCommand } from "./commands/jobs.ts";
 import { handleLogCommand, showStatus } from "./commands/logs.ts";
+import {
+	startAll,
+	startBun,
+	startExecutor,
+	stopAll,
+	stopBun,
+	stopExecutor,
+} from "./commands/services.ts";
+import { checkRequirements, setupEnvironment } from "./env-check.ts";
+import {
+	ensureDirectories,
+	PROJECT_ROOT,
+	printError,
+	printHeader,
+	printSuccess,
+} from "./utils.ts";
 
 // ====================================
 // Help Command
 // ====================================
 
 function showHelp(): void {
-  console.log(`E2E Testing Framework CLI
+	console.log(`E2E Testing Framework CLI
 
 Usage: e2e <command> [subcommand] [options]
 
@@ -83,7 +81,7 @@ Examples:
   e2e log web                   # Follow web service logs
 
 Environment Variables:
-  USE_AWS_BEDROCK          Enable AWS Bedrock (default: true)
+  CLAUDE_CODE_USE_BEDROCK  Enable AWS Bedrock (set to 1)
   AWS_REGION               AWS region (default: us-west-2)
   PORT                     Web service port (default: 3000)
   HOST                     Web service host (default: 0.0.0.0)
@@ -95,118 +93,123 @@ Environment Variables:
 // ====================================
 
 async function main(): Promise<void> {
-  // Change to project root
-  process.chdir(PROJECT_ROOT);
+	// Change to project root
+	process.chdir(PROJECT_ROOT);
 
-  // Ensure directories exist
-  await ensureDirectories();
+	// Ensure directories exist
+	await ensureDirectories();
 
-  // Parse arguments
-  const args = process.argv.slice(2);
-  const command = args[0] ?? "help";
-  const subArgs = args.slice(1);
+	// Parse arguments
+	const args = process.argv.slice(2);
+	const command = args[0] ?? "help";
+	const subArgs = args.slice(1);
 
-  try {
-    switch (command) {
-      case "help":
-      case "-h":
-      case "--help":
-        showHelp();
-        break;
+	try {
+		switch (command) {
+			case "help":
+			case "-h":
+			case "--help":
+				showHelp();
+				break;
 
-      case "check":
-        printHeader("Environment Requirements Check");
-        const result = await checkRequirements(true);
-        if (!result.hasErrors) {
-          printSuccess("All requirements satisfied!");
-        } else {
-          printError("Some requirements are missing");
-          process.exit(1);
-        }
-        break;
+			case "check": {
+				printHeader("Environment Requirements Check");
+				const result = await checkRequirements(true);
+				if (!result.hasErrors) {
+					printSuccess("All requirements satisfied!");
+				} else {
+					printError("Some requirements are missing");
+					process.exit(1);
+				}
+				break;
+			}
 
-      case "start":
-        const startService = subArgs[0] ?? "all";
-        switch (startService) {
-          case "all":
-            await startAll();
-            break;
-          case "web":
-          case "bun":
-            await setupEnvironment(true);
-            await startBun(true); // foreground mode
-            break;
-          case "executor":
-            await setupEnvironment(true);
-            await startExecutor();
-            break;
-          default:
-            printError(`Unknown service: ${startService}`);
-            console.log("Usage: e2e start [executor|web]");
-            process.exit(1);
-        }
-        break;
+			case "start": {
+				const startService = subArgs[0] ?? "all";
+				switch (startService) {
+					case "all":
+						await startAll();
+						break;
+					case "web":
+					case "bun":
+						await setupEnvironment(true);
+						await startBun(true); // foreground mode
+						break;
+					case "executor":
+						await setupEnvironment(true);
+						await startExecutor();
+						break;
+					default:
+						printError(`Unknown service: ${startService}`);
+						console.log("Usage: e2e start [executor|web]");
+						process.exit(1);
+				}
+				break;
+			}
 
-      case "stop":
-        const stopService = subArgs[0] ?? "all";
-        switch (stopService) {
-          case "all":
-            await stopAll();
-            break;
-          case "executor":
-            await stopExecutor();
-            break;
-          case "web":
-          case "bun":
-            await stopBun();
-            break;
-          default:
-            printError(`Unknown service: ${stopService}`);
-            console.log("Usage: e2e stop [executor|web]");
-            process.exit(1);
-        }
-        break;
+			case "stop": {
+				const stopService = subArgs[0] ?? "all";
+				switch (stopService) {
+					case "all":
+						await stopAll();
+						break;
+					case "executor":
+						await stopExecutor();
+						break;
+					case "web":
+					case "bun":
+						await stopBun();
+						break;
+					default:
+						printError(`Unknown service: ${stopService}`);
+						console.log("Usage: e2e stop [executor|web]");
+						process.exit(1);
+				}
+				break;
+			}
 
-      case "job":
-        const jobAction = subArgs[0];
-        if (!jobAction) {
-          printError("Missing job action");
-          console.log("Usage: e2e job <submit|cancel|status|list> [args]");
-          process.exit(1);
-        }
-        await setupEnvironment(false); // Silent mode
-        await handleJobCommand(jobAction, subArgs.slice(1));
-        break;
+			case "job": {
+				const jobAction = subArgs[0];
+				if (!jobAction) {
+					printError("Missing job action");
+					console.log("Usage: e2e job <submit|cancel|status|list> [args]");
+					process.exit(1);
+				}
+				await setupEnvironment(false); // Silent mode
+				await handleJobCommand(jobAction, subArgs.slice(1));
+				break;
+			}
 
-      case "log":
-      case "logs":
-        const logService = subArgs[0];
-        if (!logService) {
-          printError("Missing service name");
-          console.log("Usage: e2e log <executor|web>");
-          process.exit(1);
-        }
-        await handleLogCommand(logService);
-        break;
+			case "log":
+			case "logs": {
+				const logService = subArgs[0];
+				if (!logService) {
+					printError("Missing service name");
+					console.log("Usage: e2e log <executor|web>");
+					process.exit(1);
+				}
+				await handleLogCommand(logService);
+				break;
+			}
 
-      case "status":
-        await showStatus();
-        break;
+			case "status":
+				await showStatus();
+				break;
 
-      default:
-        printError(`Unknown command: ${command}`);
-        console.log("");
-        showHelp();
-        process.exit(1);
-    }
-  } catch (error) {
-    printError(`Command failed: ${error}`);
-    process.exit(1);
-  }
+			default:
+				printError(`Unknown command: ${command}`);
+				console.log("");
+				showHelp();
+				process.exit(1);
+		}
+	} catch (error) {
+		printError(`Command failed: ${error}`);
+		process.exit(1);
+	}
 }
 
 // Run main
 main().catch((error) => {
-  printError(`Fatal error: ${error}`);
-  process.exit(1);
+	printError(`Fatal error: ${error}`);
+	process.exit(1);
 });

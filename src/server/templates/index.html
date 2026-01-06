@@ -554,7 +554,7 @@
                 }
 
             } catch (error) {
-                showAlert('error', 'Network Error: ' + error.message);
+                showAlert('error', `Network Error: ${error.message}`);
             } finally {
                 submitBtn.disabled = false;
                 submitText.textContent = 'Execute Test Job';
