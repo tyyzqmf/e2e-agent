@@ -52,7 +52,8 @@ export class PricingCalculator {
 	 * @returns Cost breakdown
 	 */
 	calculateCost(tokens: TokenUsage, model: string): CostBreakdown {
-		const rates = this.getRates(model);
+		const cleanModel = this.cleanModelId(model);
+		const rates = this.getRates(cleanModel);
 
 		const inputCost = this.calculateTokenCost(
 			tokens.inputTokens ?? 0,
@@ -371,5 +372,15 @@ export class PricingCalculator {
 		ratePerMillion: number,
 	): number {
 		return (tokenCount / 1_000_000) * ratePerMillion;
+	}
+
+	/**
+	 * Clean model ID by removing context window suffixes.
+	 * AWS Bedrock uses suffixes like [1m] for 1 million context window configuration.
+	 * E.g., "us.anthropic.claude-sonnet-4-5-20250929-v1:0[1m]" -> "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+	 */
+	private cleanModelId(model: string): string {
+		// Remove context window suffixes (e.g., [1m] for 1 million, [200k] for 200k)
+		return model.replace(/\[\d+[mk]?\]$/gi, "");
 	}
 }

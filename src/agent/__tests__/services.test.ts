@@ -283,6 +283,36 @@ describe("Pricing Service", () => {
 		// Cache read: 1M * $0.30/M = $0.30
 		expect(costs.cacheReadCost).toBe(0.3);
 	});
+
+	test("PricingCalculator.calculateCost strips context window suffix from model ID", () => {
+		const calculator = new PricingCalculator();
+
+		// Model ID with [1m] suffix (1 million context window)
+		const costsWithSuffix = calculator.calculateCost(
+			{
+				inputTokens: 1000000,
+				outputTokens: 100000,
+				cacheCreationTokens: 0,
+				cacheReadTokens: 0,
+			},
+			"us.anthropic.claude-sonnet-4-5-20250929-v1:0[1m]",
+		);
+
+		// Should get same rates as without suffix
+		const costsWithoutSuffix = calculator.calculateCost(
+			{
+				inputTokens: 1000000,
+				outputTokens: 100000,
+				cacheCreationTokens: 0,
+				cacheReadTokens: 0,
+			},
+			"us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+		);
+
+		expect(costsWithSuffix.inputCost).toBe(costsWithoutSuffix.inputCost);
+		expect(costsWithSuffix.outputCost).toBe(costsWithoutSuffix.outputCost);
+		expect(costsWithSuffix.totalCost).toBe(costsWithoutSuffix.totalCost);
+	});
 });
 
 describe("Token Usage Service", () => {
