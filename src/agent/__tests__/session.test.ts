@@ -212,24 +212,31 @@ describe("Usage Data Calculation", () => {
 		expect(totalTokens).toBe(15500);
 	});
 
-	test("context window usage percentage", () => {
+	test("context window usage percentage (with autocompact buffer)", () => {
 		const usage = {
 			inputTokens: 50000,
-			outputTokens: 10000,
+			outputTokens: 10000, // Not included in context usage calculation
 			cacheReadInputTokens: 5000,
 			cacheCreationInputTokens: 2000,
 		};
 		const contextWindow = 200000;
+		const AUTOCOMPACT_BUFFER = 45000; // Fixed 45k tokens
 
-		const totalTokens =
+		// Actual usage = input tokens only (not output)
+		const actualUsed =
 			usage.inputTokens +
-			usage.outputTokens +
-			usage.cacheReadInputTokens +
-			usage.cacheCreationInputTokens;
-		const usagePercent = (totalTokens / contextWindow) * 100;
+			usage.cacheCreationInputTokens +
+			usage.cacheReadInputTokens;
 
-		expect(totalTokens).toBe(67000);
-		expect(usagePercent).toBeCloseTo(33.5, 1);
+		// Total occupied = actual usage + autocompact buffer
+		const totalOccupied = actualUsed + AUTOCOMPACT_BUFFER;
+
+		// Percentage including autocompact buffer (matches /context display)
+		const usagePercent = (totalOccupied / contextWindow) * 100;
+
+		expect(actualUsed).toBe(57000); // 50000 + 2000 + 5000
+		expect(totalOccupied).toBe(102000); // 57000 + 45000
+		expect(usagePercent).toBeCloseTo(51.0, 1); // 102000 / 200000 * 100
 	});
 });
 
