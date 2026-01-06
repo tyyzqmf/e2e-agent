@@ -169,6 +169,12 @@ export interface CostStatistics {
 	total_tokens: number;
 	estimated_cost_usd: number;
 	sessions: number;
+	// Cache-related token fields
+	cache_creation_tokens?: number;
+	cache_read_tokens?: number;
+	// Cache-related cost fields
+	cache_creation_cost?: number;
+	cache_read_cost?: number;
 	// Frontend-compatible fields (aliases for convenience)
 	input_tokens?: number;
 	output_tokens?: number;
