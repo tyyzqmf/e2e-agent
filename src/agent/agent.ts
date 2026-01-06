@@ -29,7 +29,7 @@ import { sleep } from "./utils/index.ts";
 /**
  * Format duration from milliseconds to human-readable string (e.g., "6m 2s")
  */
-function formatDuration(totalMs: number): string {
+export function formatDuration(totalMs: number): string {
 	const totalSeconds = Math.floor(totalMs / 1000);
 	const minutes = Math.floor(totalSeconds / 60);
 	const seconds = totalSeconds % 60;
@@ -43,7 +43,7 @@ function formatDuration(totalMs: number): string {
 /**
  * Format token count to human-readable string (e.g., "1.34M", "500K")
  */
-function formatTokenCount(tokens: number): string {
+export function formatTokenCount(tokens: number): string {
 	if (tokens >= 1_000_000) {
 		return `${(tokens / 1_000_000).toFixed(2)}M`;
 	}
@@ -59,7 +59,7 @@ function formatTokenCount(tokens: number): string {
  *
  * @param projectDir - Project directory path
  */
-async function updateHtmlReportCosts(projectDir: string): Promise<void> {
+export async function updateHtmlReportCosts(projectDir: string): Promise<void> {
 	try {
 		// Read usage statistics
 		const usageStatsFile = join(projectDir, "usage_statistics.json");
