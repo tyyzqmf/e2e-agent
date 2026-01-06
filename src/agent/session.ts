@@ -16,6 +16,9 @@ import {
 	type SDKToolProgressMessage,
 	type SDKUserMessage,
 } from "@anthropic-ai/claude-agent-sdk";
+
+// Enable verbose logging for debugging with E2E_DEBUG=1
+const DEBUG_LOGGING = process.env.E2E_DEBUG === "1";
 import {
 	handleAssistantMessage,
 	handleCompactBoundary,
@@ -72,6 +75,15 @@ export async function runAgentSession(
 			if (msgType === "system") {
 				const sysMsg = msg as SDKSystemMessage | SDKCompactBoundaryMessage;
 
+				// Debug logging for all system messages
+				if (DEBUG_LOGGING) {
+					const subtypeInfo = "subtype" in sysMsg ? sysMsg.subtype : "unknown";
+					console.log(`\n[DEBUG] System message received: subtype=${subtypeInfo}`);
+					if (subtypeInfo === "compact_boundary") {
+						console.log(`[DEBUG] compact_metadata: ${JSON.stringify((sysMsg as SDKCompactBoundaryMessage).compact_metadata)}`);
+					}
+				}
+
 				if ("subtype" in sysMsg) {
 					if (sysMsg.subtype === "init") {
 						sessionId = sysMsg.session_id;
@@ -79,9 +91,21 @@ export async function runAgentSession(
 					} else if (sysMsg.subtype === "compact_boundary") {
 						handleCompactBoundary(sysMsg as SDKCompactBoundaryMessage);
 					} else if (sysMsg.subtype === "status") {
-						const statusMsg = sysMsg as { status: string | null };
+						const statusMsg = sysMsg as {
+							status: string | null;
+							uuid?: string;
+							session_id?: string;
+						};
 						if (statusMsg.status === "compacting") {
-							console.log("\n[Context Compaction] Compacting conversation...");
+							console.log(`\n${"─".repeat(60)}`);
+							console.log("[Context Compaction] Starting context compaction...");
+							console.log("─".repeat(60));
+							console.log("  Status: Compacting conversation history");
+							console.log("  Note: This reduces context size to continue execution");
+							console.log("─".repeat(60));
+						} else if (statusMsg.status !== null) {
+							// Log other status messages for debugging
+							console.log(`\n[Status] ${statusMsg.status}`);
 						}
 					}
 				}

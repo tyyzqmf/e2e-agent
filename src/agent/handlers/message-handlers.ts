@@ -95,15 +95,22 @@ export function handleUserMessage(
 
 /**
  * Handle compact boundary message (context compaction)
+ *
+ * This is called when context compaction completes and provides
+ * details about the compaction that was performed.
  */
 export function handleCompactBoundary(msg: SDKCompactBoundaryMessage): void {
 	const metadata = msg.compact_metadata;
+	const preTokensK = (metadata.pre_tokens / 1000).toFixed(1);
+
 	console.log(`\n${"═".repeat(60)}`);
-	console.log("[Context Compaction] Automatic compaction triggered");
+	console.log("[Context Compaction] Compaction Complete");
 	console.log("═".repeat(60));
-	console.log(`  Trigger: ${metadata.trigger}`);
-	console.log(
-		`  Pre-compaction tokens: ${metadata.pre_tokens.toLocaleString()}`,
-	);
+	console.log(`  Trigger Type:         ${metadata.trigger === "auto" ? "Automatic (context limit reached)" : "Manual (/compact command)"}`);
+	console.log(`  Pre-compaction:       ${preTokensK}K tokens (${metadata.pre_tokens.toLocaleString()} tokens)`);
+	console.log(`  Session ID:           ${msg.session_id}`);
+	console.log("─".repeat(60));
+	console.log("  Note: Conversation history has been summarized to reduce context.");
+	console.log("  The agent will continue with a fresh context window.");
 	console.log(`${"═".repeat(60)}\n`);
 }

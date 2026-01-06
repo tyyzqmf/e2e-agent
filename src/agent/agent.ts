@@ -6,7 +6,7 @@
  * Uses Claude Agent SDK to execute test planning and test execution sessions.
  */
 
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createSdkOptions } from "./client.ts";
 import type { AgentOptions } from "./config.ts";
@@ -25,6 +25,130 @@ import { PricingCalculator } from "./services/pricing.ts";
 import { runAgentSession } from "./session.ts";
 import { SessionStatus } from "./types/index.ts";
 import { sleep } from "./utils/index.ts";
+
+/**
+ * Format duration from milliseconds to human-readable string (e.g., "6m 2s")
+ */
+function formatDuration(totalMs: number): string {
+	const totalSeconds = Math.floor(totalMs / 1000);
+	const minutes = Math.floor(totalSeconds / 60);
+	const seconds = totalSeconds % 60;
+
+	if (minutes > 0) {
+		return `${minutes}m ${seconds}s`;
+	}
+	return `${seconds}s`;
+}
+
+/**
+ * Format token count to human-readable string (e.g., "1.34M", "500K")
+ */
+function formatTokenCount(tokens: number): string {
+	if (tokens >= 1_000_000) {
+		return `${(tokens / 1_000_000).toFixed(2)}M`;
+	}
+	if (tokens >= 1_000) {
+		return `${(tokens / 1_000).toFixed(0)}K`;
+	}
+	return tokens.toString();
+}
+
+/**
+ * Update HTML report with final cost statistics from usage_statistics.json.
+ * This is called after the test_report session completes to ensure accurate costs.
+ *
+ * @param projectDir - Project directory path
+ */
+async function updateHtmlReportCosts(projectDir: string): Promise<void> {
+	try {
+		// Read usage statistics
+		const usageStatsFile = join(projectDir, "usage_statistics.json");
+		if (!existsSync(usageStatsFile)) {
+			console.log("[Warning] usage_statistics.json not found, skipping HTML cost update");
+			return;
+		}
+
+		const usageStats = JSON.parse(readFileSync(usageStatsFile, "utf-8"));
+		const summary = usageStats.summary;
+
+		// Find the latest test-reports directory
+		const testReportsDir = join(projectDir, "test-reports");
+		if (!existsSync(testReportsDir)) {
+			console.log("[Warning] test-reports directory not found, skipping HTML cost update");
+			return;
+		}
+
+		// Get the latest report directory (format: YYYYMMDD-HHMMSS)
+		const reportDirs = readdirSync(testReportsDir)
+			.filter((d) => /^\d{8}-\d{6}$/.test(d))
+			.sort()
+			.reverse();
+
+		if (reportDirs.length === 0) {
+			console.log("[Warning] No report directories found, skipping HTML cost update");
+			return;
+		}
+
+		const latestReportDir = join(testReportsDir, reportDirs[0]);
+		const htmlReportFile = join(latestReportDir, "Test_Report_Viewer.html");
+
+		if (!existsSync(htmlReportFile)) {
+			console.log("[Warning] Test_Report_Viewer.html not found, skipping cost update");
+			return;
+		}
+
+		// Read HTML content
+		let htmlContent = readFileSync(htmlReportFile, "utf-8");
+
+		// Calculate total duration from all sessions
+		const totalDurationMs = usageStats.sessions.reduce(
+			(sum: number, s: { durationMs: number }) => sum + s.durationMs,
+			0
+		);
+
+		// Prepare replacement values
+		const totalCost = `$${summary.totalCostUsd.toFixed(2)}`;
+		const totalTokens = formatTokenCount(summary.totalTokens);
+		const totalDuration = formatDuration(totalDurationMs);
+		const totalSessions = summary.totalSessions.toString();
+
+		// Update cost statistics in HTML
+		// Pattern: <div class="cost-value">$X.XX</div> followed by <div class="cost-label">Total Cost</div>
+		htmlContent = htmlContent.replace(
+			/(<div class="cost-value">)\$[\d.]+(<\/div>\s*<div class="cost-label">Total Cost<\/div>)/,
+			`$1${totalCost}$2`
+		);
+
+		// Update total tokens
+		htmlContent = htmlContent.replace(
+			/(<div class="cost-value">)[\d.]+[KM]?(<\/div>\s*<div class="cost-label">Total Tokens<\/div>)/,
+			`$1${totalTokens}$2`
+		);
+
+		// Update duration
+		htmlContent = htmlContent.replace(
+			/(<div class="cost-value">)\d+m \d+s(<\/div>\s*<div class="cost-label">Duration<\/div>)/,
+			`$1${totalDuration}$2`
+		);
+
+		// Update sessions count
+		htmlContent = htmlContent.replace(
+			/(<div class="cost-value">)\d+(<\/div>\s*<div class="cost-label">Sessions<\/div>)/,
+			`$1${totalSessions}$2`
+		);
+
+		// Write updated HTML
+		writeFileSync(htmlReportFile, htmlContent, "utf-8");
+
+		console.log(`[Report Update] Updated HTML report costs:`);
+		console.log(`  - Total Cost: ${totalCost}`);
+		console.log(`  - Total Tokens: ${totalTokens}`);
+		console.log(`  - Duration: ${totalDuration}`);
+		console.log(`  - Sessions: ${totalSessions}`);
+	} catch (error) {
+		console.log(`[Warning] Failed to update HTML report costs: ${error}`);
+	}
+}
 
 /**
  * Run the autonomous testing agent loop.
@@ -307,6 +431,9 @@ export async function runAutonomousTestingAgent(
 			}
 
 			console.log("\n[Report Generation] Complete");
+
+			// Update HTML report with final cost statistics (including test_report session)
+			await updateHtmlReportCosts(projectDir);
 		} catch (error) {
 			console.log(`\n[Warning] Failed to generate reports: ${error}`);
 		}
