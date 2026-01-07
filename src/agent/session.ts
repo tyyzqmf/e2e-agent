@@ -183,19 +183,25 @@ export async function runAgentSession(
 
 				// Display context usage from modelUsage (accurate SDK data)
 				if (resultMsg.modelUsage) {
+					// Autocompact buffer is fixed at 45k tokens (system default)
+					const AUTOCOMPACT_BUFFER = 45000;
+
 					for (const [modelName, usage] of Object.entries(
 						resultMsg.modelUsage,
 					)) {
-						const totalTokens =
+						// Actual usage = input tokens only (not output)
+						const actualUsed =
 							usage.inputTokens +
-							usage.outputTokens +
+							usage.cacheCreationInputTokens +
 							usage.cacheReadInputTokens;
+						// Total occupied = actual usage + autocompact buffer
+						const totalOccupied = actualUsed + AUTOCOMPACT_BUFFER;
 						const ctxWindow = usage.contextWindow;
 						const usagePercent =
-							ctxWindow > 0 ? (totalTokens / ctxWindow) * 100 : 0;
+							ctxWindow > 0 ? (totalOccupied / ctxWindow) * 100 : 0;
 
 						console.log(
-							`\n[Context] ${modelName}: ${(totalTokens / 1000).toFixed(0)}K / ${(ctxWindow / 1000).toFixed(0)}K tokens (${usagePercent.toFixed(1)}%)`,
+							`\n[Context] ${modelName}: ${(totalOccupied / 1000).toFixed(0)}K / ${(ctxWindow / 1000).toFixed(0)}K tokens (${usagePercent.toFixed(1)}%) [actual: ${(actualUsed / 1000).toFixed(0)}K + 45K buffer]`,
 						);
 						console.log(
 							`[Tokens] input: ${usage.inputTokens}, output: ${(usage.outputTokens / 1000).toFixed(1)}K, cache_read: ${(usage.cacheReadInputTokens / 1000).toFixed(0)}K, cache_write: ${(usage.cacheCreationInputTokens / 1000).toFixed(0)}K`,

@@ -760,8 +760,14 @@
 
         .cost-stats {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(4, 1fr);
             gap: 12px;
+        }
+
+        @media (max-width: 900px) {
+            .cost-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
 
         .cost-stat {
@@ -1416,7 +1422,16 @@
             <div id="costPanel" class="cost-panel" style="display: none;">
                 <div class="cost-header">
                     <h3 class="cost-title">Cost Statistics</h3>
-                    <div class="cost-total" id="costTotal">$0.00</div>
+                    <div style="display: flex; gap: 30px; align-items: baseline;">
+                        <div style="text-align: right;">
+                            <div style="font-size: 10px; letter-spacing: 0.1em; opacity: 0.7; margin-bottom: 4px;">TOTAL TOKENS</div>
+                            <div class="cost-total" id="costTotalTokens">0</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 10px; letter-spacing: 0.1em; opacity: 0.7; margin-bottom: 4px;">TOTAL COST</div>
+                            <div class="cost-total" id="costTotal">$0.00</div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="cost-stats">
@@ -1425,20 +1440,32 @@
                         <div class="cost-stat-value" id="costInputTokens">0</div>
                     </div>
                     <div class="cost-stat">
-                        <div class="cost-stat-label">Output Tokens</div>
-                        <div class="cost-stat-value" id="costOutputTokens">0</div>
-                    </div>
-                    <div class="cost-stat">
-                        <div class="cost-stat-label">Total Tokens</div>
-                        <div class="cost-stat-value" id="costTotalTokens">0</div>
-                    </div>
-                    <div class="cost-stat">
                         <div class="cost-stat-label">Input Cost</div>
                         <div class="cost-stat-value" id="costInputCost">$0.00</div>
                     </div>
                     <div class="cost-stat">
+                        <div class="cost-stat-label">Output Tokens</div>
+                        <div class="cost-stat-value" id="costOutputTokens">0</div>
+                    </div>
+                    <div class="cost-stat">
                         <div class="cost-stat-label">Output Cost</div>
                         <div class="cost-stat-value" id="costOutputCost">$0.00</div>
+                    </div>
+                    <div class="cost-stat">
+                        <div class="cost-stat-label">Cache Write Tokens</div>
+                        <div class="cost-stat-value" id="costCacheCreationTokens">0</div>
+                    </div>
+                    <div class="cost-stat">
+                        <div class="cost-stat-label">Cache Write Cost</div>
+                        <div class="cost-stat-value" id="costCacheCreationCost">$0.00</div>
+                    </div>
+                    <div class="cost-stat">
+                        <div class="cost-stat-label">Cache Read Tokens</div>
+                        <div class="cost-stat-value" id="costCacheReadTokens">0</div>
+                    </div>
+                    <div class="cost-stat">
+                        <div class="cost-stat-label">Cache Read Cost</div>
+                        <div class="cost-stat-value" id="costCacheReadCost">$0.00</div>
                     </div>
                 </div>
             </div>
@@ -1637,21 +1664,39 @@
             const cost = job.cost;
             const inputTokens = cost.input_tokens || 0;
             const outputTokens = cost.output_tokens || 0;
-            const totalTokens = inputTokens + outputTokens;
+            const cacheCreationTokens = cost.cache_creation_tokens || 0;
+            const cacheReadTokens = cost.cache_read_tokens || 0;
+            // Use total_tokens from backend (includes cache tokens) instead of simple sum
+            const totalTokens = cost.total_tokens || (inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens);
             const inputCost = cost.input_cost || 0;
             const outputCost = cost.output_cost || 0;
-            const totalCost = cost.total_cost || (inputCost + outputCost);
+            const cacheCreationCost = cost.cache_creation_cost || 0;
+            const cacheReadCost = cost.cache_read_cost || 0;
+            const totalCost = cost.total_cost || (inputCost + outputCost + cacheCreationCost + cacheReadCost);
 
-            document.getElementById('costInputTokens').textContent = formatNumber(inputTokens);
-            document.getElementById('costOutputTokens').textContent = formatNumber(outputTokens);
-            document.getElementById('costTotalTokens').textContent = formatNumber(totalTokens);
+            document.getElementById('costInputTokens').textContent = formatTokens(inputTokens);
+            document.getElementById('costOutputTokens').textContent = formatTokens(outputTokens);
+            document.getElementById('costCacheCreationTokens').textContent = formatTokens(cacheCreationTokens);
+            document.getElementById('costCacheReadTokens').textContent = formatTokens(cacheReadTokens);
+            document.getElementById('costTotalTokens').textContent = formatTokens(totalTokens);
             document.getElementById('costInputCost').textContent = formatCost(inputCost);
             document.getElementById('costOutputCost').textContent = formatCost(outputCost);
+            document.getElementById('costCacheCreationCost').textContent = formatCost(cacheCreationCost);
+            document.getElementById('costCacheReadCost').textContent = formatCost(cacheReadCost);
             document.getElementById('costTotal').textContent = formatCost(totalCost);
         }
 
         function formatNumber(num) {
             return num.toLocaleString('en-US');
+        }
+
+        function formatTokens(num) {
+            if (num >= 1000000) {
+                return (num / 1000000).toFixed(2) + 'M';
+            } else if (num >= 1000) {
+                return (num / 1000).toFixed(1) + 'K';
+            }
+            return num.toString();
         }
 
         function formatCost(cost) {

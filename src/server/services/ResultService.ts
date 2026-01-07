@@ -179,26 +179,53 @@ export class ResultService {
 						const totalCost = s.total_cost_usd ?? s.totalCostUsd ?? 0;
 						const sessions = s.total_sessions ?? s.totalSessions ?? 0;
 
-						// Calculate input/output costs from sessions if available
+						// Get cache tokens from summary
+						const cacheCreationTokens =
+							s.total_cache_creation_tokens ?? s.totalCacheCreationTokens ?? 0;
+						const cacheReadTokens =
+							s.total_cache_read_tokens ?? s.totalCacheReadTokens ?? 0;
+
+						// Calculate costs from sessions if available
+						interface SessionCosts {
+							input_cost?: number;
+							inputCost?: number;
+							output_cost?: number;
+							outputCost?: number;
+							cache_creation_cost?: number;
+							cacheCreationCost?: number;
+							cache_read_cost?: number;
+							cacheReadCost?: number;
+						}
+
 						const inputCost =
 							data.sessions?.reduce(
-								(
-									sum: number,
-									sess: { costs?: { input_cost?: number; inputCost?: number } },
-								) =>
+								(sum: number, sess: { costs?: SessionCosts }) =>
 									sum + (sess.costs?.input_cost ?? sess.costs?.inputCost ?? 0),
 								0,
 							) || 0;
 						const outputCost =
 							data.sessions?.reduce(
-								(
-									sum: number,
-									sess: {
-										costs?: { output_cost?: number; outputCost?: number };
-									},
-								) =>
+								(sum: number, sess: { costs?: SessionCosts }) =>
 									sum +
 									(sess.costs?.output_cost ?? sess.costs?.outputCost ?? 0),
+								0,
+							) || 0;
+						const cacheCreationCost =
+							data.sessions?.reduce(
+								(sum: number, sess: { costs?: SessionCosts }) =>
+									sum +
+									(sess.costs?.cache_creation_cost ??
+										sess.costs?.cacheCreationCost ??
+										0),
+								0,
+							) || 0;
+						const cacheReadCost =
+							data.sessions?.reduce(
+								(sum: number, sess: { costs?: SessionCosts }) =>
+									sum +
+									(sess.costs?.cache_read_cost ??
+										sess.costs?.cacheReadCost ??
+										0),
 								0,
 							) || 0;
 
@@ -208,6 +235,12 @@ export class ResultService {
 							total_tokens: totalTokens,
 							estimated_cost_usd: totalCost,
 							sessions: sessions,
+							// Cache tokens
+							cache_creation_tokens: cacheCreationTokens,
+							cache_read_tokens: cacheReadTokens,
+							// Cache costs
+							cache_creation_cost: cacheCreationCost,
+							cache_read_cost: cacheReadCost,
 							// Additional fields for frontend compatibility
 							input_tokens: inputTokens,
 							output_tokens: outputTokens,
