@@ -82,8 +82,10 @@ jobs:
           mv artifacts/e2e-macos-x64/e2e-macos-x64 release/e2e-macos-x64
           # Make executables
           chmod +x release/e2e-linux-x64 release/e2e-linux-arm64 release/e2e-macos-arm64 release/e2e-macos-x64
-          # Create checksums
-          cd release && sha256sum * > checksums.txt
+          # Copy install script
+          cp install.sh release/install.sh
+          # Create checksums (exclude install.sh as it's a script, not a binary)
+          cd release && sha256sum e2e-* > checksums.txt
 
       - name: Get version
         id: version
@@ -108,42 +110,58 @@ jobs:
             release/e2e-macos-arm64
             release/e2e-macos-x64
             release/checksums.txt
+            release/install.sh
           body: |
             ## Installation
 
-            ### Quick Install (Linux/macOS)
+            ### One-Line Install (Recommended)
+
+            ```bash
+            curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/install.sh | bash
+            ```
+
+            Or install a specific version:
+
+            ```bash
+            curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/main/install.sh | bash -s -- ${{ steps.version.outputs.version }}
+            ```
+
+            ### Manual Install
+
+            <details>
+            <summary>Click to expand manual installation instructions</summary>
 
             ```bash
             # Linux x64
             curl -fsSL https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.version }}/e2e-linux-x64 -o e2e
-            chmod +x e2e
-            sudo mv e2e /usr/local/bin/
+            chmod +x e2e && sudo mv e2e /usr/local/bin/
 
             # Linux ARM64
             curl -fsSL https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.version }}/e2e-linux-arm64 -o e2e
-            chmod +x e2e
-            sudo mv e2e /usr/local/bin/
+            chmod +x e2e && sudo mv e2e /usr/local/bin/
 
             # macOS Apple Silicon
             curl -fsSL https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.version }}/e2e-macos-arm64 -o e2e
-            chmod +x e2e
-            sudo mv e2e /usr/local/bin/
+            chmod +x e2e && sudo mv e2e /usr/local/bin/
 
             # macOS Intel
             curl -fsSL https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.version }}/e2e-macos-x64 -o e2e
-            chmod +x e2e
-            sudo mv e2e /usr/local/bin/
+            chmod +x e2e && sudo mv e2e /usr/local/bin/
             ```
+
+            </details>
 
             ### Verify Installation
 
             ```bash
             e2e version
+            e2e check
             ```
 
             ## Requirements
 
             - Chrome/Chromium browser (for browser automation)
+            - Node.js/npx (for chrome-devtools-mcp)
             - AWS credentials configured (for AWS Bedrock) or Anthropic API key
 
             ## What's Changed

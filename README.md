@@ -19,35 +19,23 @@ An autonomous testing framework that uses the Claude Agent SDK to execute compre
 
 ## Installation
 
-### Option 1: Pre-built Binary (Recommended)
-
-Download the pre-built executable for your platform - no Bun or Node.js installation required:
+### Option 1: One-Line Install (Recommended)
 
 ```bash
-# Linux x64
-curl -fsSL https://github.com/tyyzqmf/e2e-agent/releases/latest/download/e2e-linux-x64 -o e2e
-chmod +x e2e
-sudo mv e2e /usr/local/bin/
+curl -fsSL https://raw.githubusercontent.com/tyyzqmf/e2e-agent/main/install.sh | bash
+```
 
-# Linux ARM64 (AWS Graviton, Apple Silicon Linux VMs)
-curl -fsSL https://github.com/tyyzqmf/e2e-agent/releases/latest/download/e2e-linux-arm64 -o e2e
-chmod +x e2e
-sudo mv e2e /usr/local/bin/
+Or install a specific version:
 
-# macOS Apple Silicon (M1/M2/M3)
-curl -fsSL https://github.com/tyyzqmf/e2e-agent/releases/latest/download/e2e-macos-arm64 -o e2e
-chmod +x e2e
-sudo mv e2e /usr/local/bin/
-
-# macOS Intel
-curl -fsSL https://github.com/tyyzqmf/e2e-agent/releases/latest/download/e2e-macos-x64 -o e2e
-chmod +x e2e
-sudo mv e2e /usr/local/bin/
+```bash
+curl -fsSL https://raw.githubusercontent.com/tyyzqmf/e2e-agent/main/install.sh | bash -s -- v2.0.0
 ```
 
 Verify installation:
+
 ```bash
 e2e version
+e2e check
 ```
 
 ### Option 2: From Source
