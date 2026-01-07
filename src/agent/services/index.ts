@@ -38,3 +38,14 @@ export {
 
 // Token usage tracking
 export { TokenUsageTracker } from "./token-usage.ts";
+
+// Session state management (for conditional session resume)
+export {
+	clearSessionState,
+	getResumeResetPrompt,
+	loadSessionState,
+	saveSessionState,
+	shouldResumeSession,
+	updateSessionState,
+	type SessionState,
+} from "./session-state.ts";

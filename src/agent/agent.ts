@@ -12,6 +12,7 @@ import { createSdkOptions } from "./client.ts";
 import type { AgentOptions } from "./config.ts";
 import { AUTO_CONTINUE_DELAY_MS, DEFAULT_MODEL } from "./config.ts";
 import {
+	getResumeResetPrompt,
 	getTestExecutorPrompt,
 	getTestPlannerPrompt,
 	getTestReportPrompt,
@@ -19,7 +20,9 @@ import {
 	printTestProgressSummary,
 	printTestSessionHeader,
 	setupProjectDirectory,
+	shouldResumeSession,
 	TokenUsageTracker,
+	updateSessionState,
 } from "./services/index.ts";
 import { PricingCalculator } from "./services/pricing.ts";
 import { runAgentSession } from "./session.ts";
@@ -230,16 +233,38 @@ export async function runAutonomousTestingAgent(
 		// Print session header
 		printTestSessionHeader(iteration, isFirstRun);
 
-		// Create SDK options (session resume DISABLED to ensure fresh context each session)
+		// Determine session type
+		const currentSessionType = isFirstRun ? "test_planner" : "test_executor";
+
+		// Check if we should resume the previous session (only for executor sessions)
+		let resumeSessionId: string | undefined;
+		let isResumedSession = false;
+
+		if (!isFirstRun) {
+			// Get current test status for resume decision
+			const currentStats = await progressTracker.countTestCases();
+			const { resumeSessionId: resumeId, reason } = shouldResumeSession(
+				projectDir,
+				currentStats.notRun,
+			);
+
+			if (resumeId) {
+				resumeSessionId = resumeId;
+				isResumedSession = true;
+				console.log(`[Session Resume] ${reason}`);
+			} else {
+				console.log(`[Session] Fresh start: ${reason}`);
+			}
+		}
+
+		// Create SDK options with conditional session resume
 		const { options: sdkOptions } = await createSdkOptions({
 			projectDir,
 			model,
-			// resumeSessionId disabled: each session starts fresh to avoid inheriting
-			// incorrect "mission accomplished" state from previous sessions
+			resumeSessionId,
 		});
 
 		// Choose prompt based on session type
-		const currentSessionType = isFirstRun ? "test_planner" : "test_executor";
 		let prompt: string;
 
 		if (isFirstRun) {
@@ -247,6 +272,10 @@ export async function runAutonomousTestingAgent(
 			isFirstRun = false;
 		} else {
 			prompt = await getTestExecutorPrompt();
+			// If resuming, prepend reset instructions to avoid "mission accomplished" trap
+			if (isResumedSession) {
+				prompt = getResumeResetPrompt() + prompt;
+			}
 		}
 
 		// Create abort controller
@@ -282,6 +311,25 @@ export async function runAutonomousTestingAgent(
 			}
 		} else {
 			console.log("[Warning] No usage data available for this session");
+		}
+
+		// Update session state for conditional resume (executor sessions only)
+		if (currentSessionType === "test_executor" && usageData?.sessionId) {
+			const postSessionStats = await progressTracker.countTestCases();
+			const statusForState =
+				status === SessionStatus.CONTINUE
+					? "continue"
+					: status === SessionStatus.CONTEXT_OVERFLOW
+						? "context_overflow"
+						: "error";
+
+			updateSessionState(
+				projectDir,
+				usageData.sessionId,
+				statusForState,
+				postSessionStats.notRun,
+				isResumedSession,
+			);
 		}
 
 		// Handle status
