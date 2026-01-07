@@ -45,7 +45,10 @@ chmod +x e2e
 sudo mv e2e /usr/local/bin/
 ```
 
-**Windows:** Download `e2e-windows.exe` from the [releases page](https://github.com/anthropics/e2e-agent/releases) and add to your PATH.
+Verify installation:
+```bash
+e2e version
+```
 
 ### Option 2: From Source
 
@@ -140,6 +143,7 @@ export ANTHROPIC_API_KEY='your-api-key-here'
 | Command | Description |
 |---------|-------------|
 | `./e2e help` | Show help message |
+| `./e2e version` | Show version information |
 | `./e2e check` | Check environment requirements |
 | `./e2e start` | Start all services (executor + web) |
 | `./e2e start executor` | Start only the executor |

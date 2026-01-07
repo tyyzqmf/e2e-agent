@@ -19,8 +19,7 @@
     "build:linux-x64": "bun build --compile --target=bun-linux-x64-baseline ./e2e.ts --outfile dist/e2e-linux-x64",
     "build:linux-arm64": "bun build --compile --target=bun-linux-arm64 ./e2e.ts --outfile dist/e2e-linux-arm64",
     "build:macos-arm64": "bun build --compile --target=bun-darwin-arm64 ./e2e.ts --outfile dist/e2e-macos-arm64",
-    "build:macos-x64": "bun build --compile --target=bun-darwin-x64 ./e2e.ts --outfile dist/e2e-macos-x64",
-    "build:windows": "bun build --compile --target=bun-windows-x64 ./e2e.ts --outfile dist/e2e-windows.exe"
+    "build:macos-x64": "bun build --compile --target=bun-darwin-x64 ./e2e.ts --outfile dist/e2e-macos-x64"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.1.0",
