@@ -20,6 +20,9 @@ import testPlannerPromptMd from "../prompts/test_planner_prompt.md" with { type:
 import testExecutorPromptMd from "../prompts/test_executor_prompt.md" with { type: "text" };
 import testReportPromptMd from "../prompts/test_report_prompt.md" with { type: "text" };
 
+// Embed utils at compile time
+import jsonHelperPy from "../utils/json_helper.py" with { type: "text" };
+
 /**
  * Embedded templates map
  */
@@ -37,6 +40,13 @@ const EMBEDDED_PROMPTS: Record<string, string> = {
 	"test_planner_prompt": testPlannerPromptMd,
 	"test_executor_prompt": testExecutorPromptMd,
 	"test_report_prompt": testReportPromptMd,
+};
+
+/**
+ * Embedded utils map
+ */
+const EMBEDDED_UTILS: Record<string, string> = {
+	"json_helper.py": jsonHelperPy,
 };
 
 // Get the directory where this module is located
@@ -274,17 +284,31 @@ export function copyTemplatesToProject(projectDir: string): void {
 
 /**
  * Copy the utils directory into the project directory for the agent to use.
- * Only copies if the utils directory exists. Skipped in compiled mode.
+ * Uses embedded utils in compiled mode.
  *
  * @param projectDir - Target project directory
  */
 export function copyUtilsToProject(projectDir: string): void {
-	// Skip in compiled mode - utils are not needed
-	if (IS_COMPILED) {
-		console.log("Utils copy skipped (compiled mode)");
+	const validatedDir = validateProjectDirectory(projectDir);
+	const utilsDir = join(validatedDir, "utils");
+
+	if (existsSync(utilsDir)) {
+		console.log("utils already exists in project directory");
 		return;
 	}
 
+	// In compiled mode, write embedded utils
+	if (IS_COMPILED) {
+		mkdirSync(utilsDir, { recursive: true });
+		for (const [filename, content] of Object.entries(EMBEDDED_UTILS)) {
+			const destPath = join(utilsDir, filename);
+			writeFileSync(destPath, content, { mode: 0o755 });
+		}
+		console.log("Copied utils to project directory (from embedded)");
+		return;
+	}
+
+	// In development mode, copy from source
 	if (!existsSync(UTILS_DIR)) {
 		console.log("Utils directory not found, skipping copy");
 		return;
