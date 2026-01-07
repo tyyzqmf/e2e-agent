@@ -2,12 +2,27 @@
  * E2E Agent Web Service - Static File Routes
  *
  * Serves static files and HTML templates.
+ * Templates are embedded for compiled binary support.
  */
 
 import { join } from "node:path";
 import { config } from "../config.ts";
 import type { RequestWithParams } from "../types/index.ts";
 import { logger } from "../utils/logger.ts";
+
+// Embed templates at compile time for single-binary support
+import indexHtml from "../templates/index.html" with { type: "text" };
+import statusHtml from "../templates/status.html" with { type: "text" };
+import jobsHtml from "../templates/jobs.html" with { type: "text" };
+
+/**
+ * Embedded templates map
+ */
+const EMBEDDED_TEMPLATES: Record<string, string> = {
+	"index.html": indexHtml,
+	"status.html": statusHtml,
+	"jobs.html": jobsHtml,
+};
 
 /**
  * MIME types for common file extensions
@@ -38,10 +53,9 @@ function getMimeType(path: string): string {
 }
 
 /**
- * Base directory for static files
+ * Base directory for static files (only used in development)
  */
 const STATIC_DIR = join(config.PROJECT_ROOT, "src", "server", "static");
-const TEMPLATES_DIR = join(config.PROJECT_ROOT, "src", "server", "templates");
 
 /**
  * UUID v4 regex pattern for validation
@@ -119,37 +133,32 @@ export function buildStaticRoutes() {
 
 /**
  * Serve a template file with optional variable substitution
+ * Uses embedded templates for compiled binary support
  */
 async function serveTemplate(
 	templateName: string,
 	variables?: Record<string, string>,
 ): Promise<Response> {
-	const templatePath = join(TEMPLATES_DIR, templateName);
-	const file = Bun.file(templatePath);
+	// Use embedded template
+	const embeddedContent = EMBEDDED_TEMPLATES[templateName];
 
-	if (!(await file.exists())) {
+	if (!embeddedContent) {
 		logger.warn(`Template not found: ${templateName}`);
 		return new Response("Not Found", { status: 404 });
 	}
 
-	// If variables are provided, read and process the template
-	if (variables && Object.keys(variables).length > 0) {
-		let content = await file.text();
+	let content = embeddedContent;
 
+	// If variables are provided, process the template
+	if (variables && Object.keys(variables).length > 0) {
 		// Replace {{ variable }} patterns with HTML-escaped values to prevent XSS
 		for (const [key, value] of Object.entries(variables)) {
 			const pattern = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, "g");
 			content = content.replace(pattern, escapeHtml(value));
 		}
-
-		return new Response(content, {
-			headers: {
-				"Content-Type": "text/html; charset=utf-8",
-			},
-		});
 	}
 
-	return new Response(file, {
+	return new Response(content, {
 		headers: {
 			"Content-Type": "text/html; charset=utf-8",
 		},
