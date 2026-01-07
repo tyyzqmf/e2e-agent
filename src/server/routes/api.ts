@@ -496,20 +496,23 @@ export function buildApiRoutes(services: ServiceContext) {
  * Build health check route
  */
 export function buildHealthRoute(services: ServiceContext) {
+	const healthHandler = () => {
+		// Get running job from database (executor runs independently)
+		const runningJob = services.jobManager.getRunningJob();
+		return jsonResponse({
+			status: "healthy",
+			version: "2.0.0",
+			runtime: `bun ${Bun.version}`,
+			uptime: process.uptime(),
+			queue_size: services.jobManager.getQueueSize(),
+			current_job: runningJob?.jobId ?? null,
+			timestamp: new Date().toISOString(),
+		});
+	};
+
 	return {
-		"GET /health": () => {
-			// Get running job from database (executor runs independently)
-			const runningJob = services.jobManager.getRunningJob();
-			return jsonResponse({
-				status: "healthy",
-				version: "2.0.0",
-				runtime: `bun ${Bun.version}`,
-				uptime: process.uptime(),
-				queue_size: services.jobManager.getQueueSize(),
-				current_job: runningJob?.jobId ?? null,
-				timestamp: new Date().toISOString(),
-			});
-		},
+		"GET /health": healthHandler,
+		"GET /api/health": healthHandler,
 	};
 }
 
