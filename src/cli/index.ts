@@ -38,9 +38,10 @@ import {
 	printSuccess,
 } from "./utils.ts";
 
-// Version information
-const VERSION = "0.2.7";
-const BUILD_DATE = "2026-01-07";
+// Import version from package.json (single source of truth)
+import packageJson from "../../package.json";
+
+const VERSION = packageJson.version;
 
 // ====================================
 // Internal Service Runners
@@ -80,7 +81,6 @@ async function runInternalAgent(): Promise<void> {
 
 function showVersion(): void {
 	console.log(`E2E Testing Framework v${VERSION}`);
-	console.log(`Build date: ${BUILD_DATE}`);
 	console.log(`Runtime: Bun ${Bun.version}`);
 }
 
