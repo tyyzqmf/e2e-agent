@@ -7,13 +7,12 @@
 
 import { join } from "node:path";
 import { config } from "../config.ts";
-import type { RequestWithParams } from "../types/index.ts";
-import { logger } from "../utils/logger.ts";
-
 // Embed templates at compile time for single-binary support
 import indexHtml from "../templates/index.html" with { type: "text" };
-import statusHtml from "../templates/status.html" with { type: "text" };
 import jobsHtml from "../templates/jobs.html" with { type: "text" };
+import statusHtml from "../templates/status.html" with { type: "text" };
+import type { RequestWithParams } from "../types/index.ts";
+import { logger } from "../utils/logger.ts";
 
 /**
  * Embedded templates map

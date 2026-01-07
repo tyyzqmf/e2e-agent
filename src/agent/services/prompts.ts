@@ -8,17 +8,29 @@
 
 import { cpSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-
-// Embed templates at compile time for single-binary support
-import testReportViewerHtml from "../templates/Test_Report_Viewer.html" with { type: "text" };
-import defectReportMd from "../templates/defect-report.md" with { type: "text" };
-import testCaseReportMd from "../templates/test-case-report.md" with { type: "text" };
-import testSummaryReportMd from "../templates/test-summary-report.md" with { type: "text" };
-
+import testExecutorPromptMd from "../prompts/test_executor_prompt.md" with {
+	type: "text",
+};
 // Embed prompts at compile time
-import testPlannerPromptMd from "../prompts/test_planner_prompt.md" with { type: "text" };
-import testExecutorPromptMd from "../prompts/test_executor_prompt.md" with { type: "text" };
-import testReportPromptMd from "../prompts/test_report_prompt.md" with { type: "text" };
+import testPlannerPromptMd from "../prompts/test_planner_prompt.md" with {
+	type: "text",
+};
+import testReportPromptMd from "../prompts/test_report_prompt.md" with {
+	type: "text",
+};
+import defectReportMd from "../templates/defect-report.md" with {
+	type: "text",
+};
+// Embed templates at compile time for single-binary support
+import testReportViewerHtml from "../templates/Test_Report_Viewer.html" with {
+	type: "text",
+};
+import testCaseReportMd from "../templates/test-case-report.md" with {
+	type: "text",
+};
+import testSummaryReportMd from "../templates/test-summary-report.md" with {
+	type: "text",
+};
 
 // Embed utils at compile time
 import jsonHelperPy from "../utils/json_helper.py" with { type: "text" };
@@ -37,9 +49,9 @@ const EMBEDDED_TEMPLATES: Record<string, string> = {
  * Embedded prompts map
  */
 const EMBEDDED_PROMPTS: Record<string, string> = {
-	"test_planner_prompt": testPlannerPromptMd,
-	"test_executor_prompt": testExecutorPromptMd,
-	"test_report_prompt": testReportPromptMd,
+	test_planner_prompt: testPlannerPromptMd,
+	test_executor_prompt: testExecutorPromptMd,
+	test_report_prompt: testReportPromptMd,
 };
 
 /**
@@ -53,7 +65,8 @@ const EMBEDDED_UTILS: Record<string, string> = {
 const MODULE_DIR = dirname(new URL(import.meta.url).pathname);
 
 // Check if running as compiled binary
-const IS_COMPILED = MODULE_DIR.includes("/$bunfs/") || !MODULE_DIR.includes("/src/agent/");
+const IS_COMPILED =
+	MODULE_DIR.includes("/$bunfs/") || !MODULE_DIR.includes("/src/agent/");
 
 // Directory Constants (only used in development mode)
 export const PROMPTS_DIR = join(MODULE_DIR, "..", "prompts");

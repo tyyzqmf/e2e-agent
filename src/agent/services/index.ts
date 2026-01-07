@@ -35,17 +35,15 @@ export {
 	validateDestName,
 	validateProjectDirectory,
 } from "./prompts.ts";
-
-// Token usage tracking
-export { TokenUsageTracker } from "./token-usage.ts";
-
 // Session state management (for conditional session resume)
 export {
 	clearSessionState,
 	getResumeResetPrompt,
 	loadSessionState,
+	type SessionState,
 	saveSessionState,
 	shouldResumeSession,
 	updateSessionState,
-	type SessionState,
 } from "./session-state.ts";
+// Token usage tracking
+export { TokenUsageTracker } from "./token-usage.ts";

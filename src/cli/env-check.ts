@@ -5,7 +5,6 @@
  * Note: Python is no longer required - the agent runs on TypeScript/Bun.
  */
 
-import { join } from "node:path";
 import { $ } from "bun";
 import { colors, DATA_DIR, LOGS_DIR, printError } from "./utils.ts";
 

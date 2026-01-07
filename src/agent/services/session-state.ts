@@ -84,7 +84,7 @@ export function saveSessionState(
  */
 export function shouldResumeSession(
 	projectDir: string,
-	currentNotRunCount: number,
+	_currentNotRunCount: number,
 ): { resumeSessionId: string | null; reason: string } {
 	const state = loadSessionState(projectDir);
 
