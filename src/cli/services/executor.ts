@@ -210,9 +210,10 @@ export class TestExecutor {
 
 			// Stream stdout to file incrementally
 			const streamStdout = async () => {
-				if (!this.currentProcess?.stdout) return;
+				const stdout = this.currentProcess?.stdout;
+				if (!stdout || typeof stdout === "number") return;
 				try {
-					for await (const chunk of this.currentProcess.stdout) {
+					for await (const chunk of stdout) {
 						stdoutStream.write(chunk);
 					}
 				} catch {
@@ -222,9 +223,10 @@ export class TestExecutor {
 
 			// Stream stderr to file incrementally
 			const streamStderr = async () => {
-				if (!this.currentProcess?.stderr) return;
+				const stderr = this.currentProcess?.stderr;
+				if (!stderr || typeof stderr === "number") return;
 				try {
-					for await (const chunk of this.currentProcess.stderr) {
+					for await (const chunk of stderr) {
 						stderrStream.write(chunk);
 					}
 				} catch {
