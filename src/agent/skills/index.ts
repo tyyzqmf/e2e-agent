@@ -12,6 +12,10 @@ import { dirname, join, resolve } from "node:path";
 // Get the directory where this module is located
 const MODULE_DIR = dirname(new URL(import.meta.url).pathname);
 
+// Check if running as compiled binary
+const IS_COMPILED =
+	MODULE_DIR.includes("/$bunfs/") || !MODULE_DIR.includes("/src/agent/");
+
 /**
  * Default plugin directories (plugins are inside src/agent/)
  */
@@ -99,8 +103,8 @@ export function collectPluginDirectories(
 
 	const allPluginDirs: string[] = [];
 
-	// Load default skills if enabled
-	if (loadDefaultSkills) {
+	// Load default skills if enabled (skip in compiled mode - plugins not available)
+	if (loadDefaultSkills && !IS_COMPILED) {
 		for (const skillName of DEFAULT_SKILLS) {
 			const skillPluginPath = join(DEFAULT_PLUGINS_DIR, skillName);
 			if (existsSync(skillPluginPath)) {
