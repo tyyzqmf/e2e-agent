@@ -4,7 +4,6 @@
  * Common utilities for CLI operations using Bun's native APIs.
  */
 
-import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { $ } from "bun";
@@ -58,6 +57,20 @@ export function isCompiledBinary(): boolean {
 		metaUrl.includes("/$bunfs/") ||
 		!metaUrl.includes("/src/cli/")
 	);
+}
+
+/**
+ * Get the path to the current executable
+ * In compiled mode, returns the path to the binary
+ * In development mode, returns the path to bun
+ */
+export function getExecutablePath(): string {
+	if (isCompiledBinary()) {
+		// process.execPath in compiled mode points to the executable
+		return process.execPath;
+	}
+	// In development mode, return bun
+	return "bun";
 }
 
 // ====================================

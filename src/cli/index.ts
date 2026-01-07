@@ -29,6 +29,7 @@ import {
 } from "./commands/services.ts";
 import { checkRequirements, setupEnvironment } from "./env-check.ts";
 import {
+	DATA_DIR,
 	ensureDirectories,
 	isCompiledBinary,
 	PROJECT_ROOT,
@@ -36,6 +37,27 @@ import {
 	printHeader,
 	printSuccess,
 } from "./utils.ts";
+
+// ====================================
+// Internal Service Runners
+// ====================================
+
+/**
+ * Run the web server directly (for compiled binary mode)
+ */
+async function runInternalServer(): Promise<void> {
+	// Dynamically import to ensure all modules are bundled
+	const { startServer } = await import("../server/main.ts");
+	await startServer();
+}
+
+/**
+ * Run the executor directly (for compiled binary mode)
+ */
+async function runInternalExecutor(): Promise<void> {
+	const { runExecutor } = await import("./services/executor.ts");
+	await runExecutor();
+}
 
 // ====================================
 // Help Command
@@ -94,6 +116,23 @@ Environment Variables:
 // ====================================
 
 async function main(): Promise<void> {
+	// Parse arguments first to check for internal commands
+	const args = process.argv.slice(2);
+	const command = args[0] ?? "help";
+
+	// Handle internal commands (used by compiled binary to spawn services)
+	if (command === "--internal-server") {
+		process.env.DATA_DIR = process.env.DATA_DIR ?? DATA_DIR;
+		await runInternalServer();
+		return;
+	}
+
+	if (command === "--internal-executor") {
+		process.env.DATA_DIR = process.env.DATA_DIR ?? DATA_DIR;
+		await runInternalExecutor();
+		return;
+	}
+
 	// Change to project root (only in development mode)
 	if (!isCompiledBinary()) {
 		process.chdir(PROJECT_ROOT);
@@ -102,9 +141,6 @@ async function main(): Promise<void> {
 	// Ensure directories exist
 	await ensureDirectories();
 
-	// Parse arguments
-	const args = process.argv.slice(2);
-	const command = args[0] ?? "help";
 	const subArgs = args.slice(1);
 
 	try {

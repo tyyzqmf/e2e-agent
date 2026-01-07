@@ -12,7 +12,9 @@ import {
 	DATA_DIR,
 	EXECUTOR_PID_FILE,
 	findPidsByPattern,
+	getExecutablePath,
 	getTimestamp,
+	isCompiledBinary,
 	isProcessRunning,
 	LOGS_DIR,
 	PROJECT_ROOT,
@@ -26,6 +28,22 @@ import {
 	safeReadPid,
 	writePid,
 } from "../utils.ts";
+
+/**
+ * Get the command to start a service based on running mode
+ */
+function getServiceCommand(internalArg: string): string[] {
+	if (isCompiledBinary()) {
+		// In compiled mode, use the executable itself with internal flag
+		const execPath = getExecutablePath();
+		return [execPath, internalArg];
+	}
+	// In development mode, use bun run
+	if (internalArg === "--internal-server") {
+		return ["bun", "run", "src/server/index.ts"];
+	}
+	return ["bun", "run", "src/cli/run-executor.ts"];
+}
 
 // ====================================
 // Start Commands
@@ -47,10 +65,13 @@ export async function startExecutor(): Promise<boolean> {
 	// Create log file
 	const logFile = join(LOGS_DIR, `executor_${getTimestamp()}.log`);
 
+	// Get the command to start executor
+	const cmd = getServiceCommand("--internal-executor");
+
 	// Start executor with setsid to create new process group
 	try {
 		const proc = spawn({
-			cmd: ["setsid", "nohup", "bun", "run", "src/cli/run-executor.ts"],
+			cmd: ["setsid", "nohup", ...cmd],
 			cwd: PROJECT_ROOT,
 			stdout: Bun.file(logFile),
 			stderr: Bun.file(logFile),
@@ -59,6 +80,7 @@ export async function startExecutor(): Promise<boolean> {
 				...process.env,
 				CLAUDE_CODE_USE_BEDROCK: process.env.CLAUDE_CODE_USE_BEDROCK ?? "1",
 				AWS_REGION: process.env.AWS_REGION ?? "us-west-2",
+				DATA_DIR,
 			},
 		});
 
@@ -122,13 +144,16 @@ export async function startBun(foreground: boolean = false): Promise<boolean> {
 	process.env.DATA_DIR = DATA_DIR;
 	process.env.PROJECT_ROOT = PROJECT_ROOT;
 
+	// Get the command to start server
+	const cmd = getServiceCommand("--internal-server");
+
 	if (foreground) {
 		printSuccess(`Bun web service starting on http://${host}:${port}`);
 		printInfo("Press Ctrl+C to stop");
 
-		// Run in foreground - use exec to replace current process
+		// Run in foreground
 		const proc = spawn({
-			cmd: ["bun", "run", "src/server/index.ts"],
+			cmd,
 			cwd: PROJECT_ROOT,
 			stdout: "inherit",
 			stderr: "inherit",
@@ -152,7 +177,7 @@ export async function startBun(foreground: boolean = false): Promise<boolean> {
 
 	try {
 		const proc = spawn({
-			cmd: ["bun", "run", "src/server/index.ts"],
+			cmd,
 			cwd: PROJECT_ROOT,
 			stdout: Bun.file(logFile),
 			stderr: Bun.file(logFile),
@@ -228,12 +253,18 @@ export async function startAll(): Promise<void> {
 		console.log("");
 		printInfo("Stopping web service...");
 
-		const bunPids = await findPidsByPattern("bun.*src/server/index.ts");
-		for (const pid of bunPids) {
-			await safeKill(pid);
+		// Try to find web service by various patterns
+		const patterns = ["bun.*src/server/index.ts", "--internal-server"];
+		let stopped = false;
+		for (const pattern of patterns) {
+			const pids = await findPidsByPattern(pattern);
+			for (const pid of pids) {
+				await safeKill(pid);
+				stopped = true;
+			}
 		}
 
-		if (bunPids.length > 0) {
+		if (stopped) {
 			printSuccess("Web service stopped");
 		}
 
@@ -249,15 +280,18 @@ export async function startAll(): Promise<void> {
 	process.on("SIGINT", cleanup);
 	process.on("SIGTERM", cleanup);
 
-	// Set environment and start Bun in foreground
+	// Set environment and start web service in foreground
 	process.env.PORT = port;
 	process.env.HOST = host;
 	process.env.DATA_DIR = DATA_DIR;
 	process.env.PROJECT_ROOT = PROJECT_ROOT;
 
-	// Start Bun web service in foreground (replaces current process)
+	// Get the command to start server
+	const cmd = getServiceCommand("--internal-server");
+
+	// Start web service in foreground
 	const proc = spawn({
-		cmd: ["bun", "run", "src/server/index.ts"],
+		cmd,
 		cwd: PROJECT_ROOT,
 		stdout: "inherit",
 		stderr: "inherit",
@@ -305,11 +339,14 @@ export async function stopExecutor(): Promise<void> {
 	}
 	await removePidFile(EXECUTOR_PID_FILE);
 
-	// Also check by process name (both Python and TypeScript)
-	const executorPids = await findPidsByPattern("cli/run-executor");
-	for (const execPid of executorPids) {
-		await safeKill(execPid);
-		stopped = true;
+	// Also check by process name (development and compiled mode)
+	const patterns = ["cli/run-executor", "--internal-executor"];
+	for (const pattern of patterns) {
+		const executorPids = await findPidsByPattern(pattern);
+		for (const execPid of executorPids) {
+			await safeKill(execPid);
+			stopped = true;
+		}
 	}
 
 	if (stopped) {
@@ -335,11 +372,14 @@ export async function stopBun(): Promise<void> {
 	}
 	await removePidFile(BUN_PID_FILE);
 
-	// Also check by process name
-	const bunPids = await findPidsByPattern("bun.*src/server/index.ts");
-	for (const bunPid of bunPids) {
-		await safeKill(bunPid);
-		stopped = true;
+	// Also check by process name (development and compiled mode)
+	const patterns = ["bun.*src/server/index.ts", "--internal-server"];
+	for (const pattern of patterns) {
+		const bunPids = await findPidsByPattern(pattern);
+		for (const bunPid of bunPids) {
+			await safeKill(bunPid);
+			stopped = true;
+		}
 	}
 
 	if (stopped) {
