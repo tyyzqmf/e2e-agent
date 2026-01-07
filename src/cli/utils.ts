@@ -13,37 +13,60 @@ import { $ } from "bun";
 // ====================================
 
 /**
- * Determine project root directory.
- * - In development: use import.meta.url to find src/cli relative path
- * - In compiled binary: use current working directory or E2E_HOME env var
+ * Check if running as a compiled binary (internal helper)
  */
-function getProjectRoot(): string {
+function checkIsCompiled(): boolean {
+	const metaUrl = import.meta.url;
+	return (
+		metaUrl.startsWith("file:///") === false ||
+		metaUrl.includes("/$bunfs/") ||
+		!metaUrl.includes("/src/cli/")
+	);
+}
+
+/**
+ * Get the E2E home directory for data and logs.
+ * - In compiled mode: ~/.e2e (user's home directory)
+ * - In development mode: project root directory
+ */
+function getE2EHome(): string {
 	// Check for explicit override via environment variable
 	if (process.env.E2E_HOME) {
 		return resolve(process.env.E2E_HOME);
 	}
 
-	// Try to determine if we're running as a compiled binary
-	// In compiled mode, import.meta.url points to a virtual path
-	const metaUrl = import.meta.url;
-	const isCompiled =
-		metaUrl.startsWith("file:///") === false ||
-		metaUrl.includes("/$bunfs/") ||
-		!metaUrl.includes("/src/cli/");
+	if (checkIsCompiled()) {
+		// In compiled mode, use ~/.e2e in user's home directory
+		const homeDir = process.env.HOME ?? process.env.USERPROFILE ?? "/tmp";
+		return join(homeDir, ".e2e");
+	}
 
-	if (isCompiled) {
-		// In compiled mode, use current working directory
+	// In development mode, use project root
+	const __dirname = dirname(fileURLToPath(import.meta.url));
+	return join(__dirname, "..", "..");
+}
+
+/**
+ * Determine project root directory.
+ * - In development: use import.meta.url to find src/cli relative path
+ * - In compiled binary: use current working directory or E2E_HOME env var
+ */
+function getProjectRoot(): string {
+	if (checkIsCompiled()) {
+		// In compiled mode, use current working directory for project operations
 		return process.cwd();
 	}
 
 	// In development mode, calculate from source file location
-	const __dirname = dirname(fileURLToPath(metaUrl));
+	const __dirname = dirname(fileURLToPath(import.meta.url));
 	return join(__dirname, "..", "..");
 }
 
+// E2E home directory (where data and logs are stored)
+export const E2E_HOME = getE2EHome();
 export const PROJECT_ROOT = getProjectRoot();
-export const DATA_DIR = join(PROJECT_ROOT, "data");
-export const LOGS_DIR = join(PROJECT_ROOT, "logs");
+export const DATA_DIR = join(E2E_HOME, "data");
+export const LOGS_DIR = join(E2E_HOME, "logs");
 export const EXECUTOR_PID_FILE = join(DATA_DIR, "executor.pid");
 export const BUN_PID_FILE = join(DATA_DIR, "bun.pid");
 

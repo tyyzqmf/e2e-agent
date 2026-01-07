@@ -5,8 +5,9 @@
  * Note: Python is no longer required - the agent runs on TypeScript/Bun.
  */
 
+import { join } from "node:path";
 import { $ } from "bun";
-import { colors, printError } from "./utils.ts";
+import { colors, DATA_DIR, LOGS_DIR, printError } from "./utils.ts";
 
 // ====================================
 // Dependency Check Functions
@@ -258,7 +259,7 @@ export async function setupEnvironment(verbose: boolean = true): Promise<void> {
 	await checkRequirementsOrExit(verbose);
 
 	// Create directories
-	await $`mkdir -p data/reports logs generations`.quiet();
+	await $`mkdir -p ${DATA_DIR}/reports ${LOGS_DIR}`.quiet();
 
 	// Set AWS Bedrock environment variables (using official CLAUDE_CODE_USE_BEDROCK)
 	process.env.CLAUDE_CODE_USE_BEDROCK =
