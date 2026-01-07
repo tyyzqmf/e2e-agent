@@ -25,22 +25,22 @@ Download the pre-built executable for your platform - no Bun or Node.js installa
 
 ```bash
 # Linux x64
-curl -fsSL https://github.com/anthropics/e2e-agent/releases/latest/download/e2e-linux-x64 -o e2e
+curl -fsSL https://github.com/tyyzqmf/e2e-agent/releases/latest/download/e2e-linux-x64 -o e2e
 chmod +x e2e
 sudo mv e2e /usr/local/bin/
 
 # Linux ARM64 (AWS Graviton, Apple Silicon Linux VMs)
-curl -fsSL https://github.com/anthropics/e2e-agent/releases/latest/download/e2e-linux-arm64 -o e2e
+curl -fsSL https://github.com/tyyzqmf/e2e-agent/releases/latest/download/e2e-linux-arm64 -o e2e
 chmod +x e2e
 sudo mv e2e /usr/local/bin/
 
 # macOS Apple Silicon (M1/M2/M3)
-curl -fsSL https://github.com/anthropics/e2e-agent/releases/latest/download/e2e-macos-arm64 -o e2e
+curl -fsSL https://github.com/tyyzqmf/e2e-agent/releases/latest/download/e2e-macos-arm64 -o e2e
 chmod +x e2e
 sudo mv e2e /usr/local/bin/
 
 # macOS Intel
-curl -fsSL https://github.com/anthropics/e2e-agent/releases/latest/download/e2e-macos-x64 -o e2e
+curl -fsSL https://github.com/tyyzqmf/e2e-agent/releases/latest/download/e2e-macos-x64 -o e2e
 chmod +x e2e
 sudo mv e2e /usr/local/bin/
 ```
@@ -56,7 +56,7 @@ If you prefer to run from source or want to contribute:
 
 ```bash
 # Clone the repository
-git clone https://github.com/anthropics/e2e-agent.git
+git clone https://github.com/tyyzqmf/e2e-agent.git
 cd e2e-agent
 
 # Install Bun (https://bun.sh)
@@ -200,72 +200,6 @@ Each session runs with a fresh context window. Progress persists through:
 - **`test_cases.json`**: Single source of truth for test status
 - **`claude-progress.txt`**: Session notes and next steps
 
-## Project Structure
-
-```
-e2e-agent/
-├── e2e                         # Unified CLI command (symlink to e2e.ts)
-├── e2e.ts                      # CLI entry point (Bun/TypeScript)
-├── src/
-│   ├── agent/                      # Agent (TypeScript/Bun)
-│   │   ├── index.ts                  # Main entry point
-│   │   ├── agent.ts                  # Core agent loop
-│   │   ├── client.ts                 # Claude SDK client configuration
-│   │   ├── config.ts                 # Agent configuration constants
-│   │   ├── types/                    # TypeScript type definitions
-│   │   │   ├── index.ts              # Type re-exports
-│   │   │   ├── session.ts            # Session-related types
-│   │   │   ├── test-case.ts          # Test case types
-│   │   │   └── pricing.ts            # Pricing/cost types
-│   │   ├── services/                 # Business logic services
-│   │   │   ├── index.ts              # Service re-exports
-│   │   │   ├── progress.ts           # Test progress tracking
-│   │   │   ├── prompts.ts            # Prompt loading utilities
-│   │   │   ├── pricing.ts            # Cost calculation
-│   │   │   └── token-usage.ts        # Token usage tracking
-│   │   ├── security/                 # Security configuration
-│   │   │   ├── index.ts              # Security re-exports
-│   │   │   ├── tools.ts              # Tool permissions
-│   │   │   ├── hooks.ts              # Context management hooks
-│   │   │   └── mcp-servers.ts        # MCP server configuration
-│   │   ├── skills/                   # Skills/plugins support
-│   │   │   └── index.ts              # Skills loader
-│   │   ├── prompts/                  # Agent prompt templates
-│   │   │   ├── test_planner_prompt.md
-│   │   │   └── test_executor_prompt.md
-│   │   ├── templates/                # Report templates
-│   │   └── plugins/                  # Agent plugins
-│   ├── server/                     # Web server (Bun runtime)
-│   │   ├── index.ts                # Web server entry point
-│   │   ├── config.ts               # Configuration management
-│   │   ├── routes/                 # API routes
-│   │   │   ├── api.ts              # REST API endpoints
-│   │   │   └── static.ts           # Static file serving
-│   │   ├── services/               # Business logic
-│   │   │   ├── JobManager.ts       # Job queue management (SQLite)
-│   │   │   └── ResultService.ts    # Test results handling
-│   │   ├── static/                 # Static web assets (CSS, JS)
-│   │   ├── templates/              # HTML templates
-│   │   └── utils/
-│   │       └── logger.ts           # Logging utilities
-│   └── cli/                        # CLI-related code (TypeScript)
-│       ├── index.ts                # CLI entry point
-│       ├── env-check.ts            # Environment checks
-│       ├── utils.ts                # CLI utilities
-│       ├── run-executor.ts         # Executor entry point
-│       ├── commands/               # CLI command implementations
-│       │   ├── services.ts         # Service start/stop commands
-│       │   ├── jobs.ts             # Job management commands
-│       │   └── logs.ts             # Log viewing commands
-│       └── services/               # CLI services
-│           ├── job.ts              # Job management service
-│           └── executor.ts         # Test executor service
-├── data/                       # Runtime data
-│   ├── e2e.db                  # SQLite database (jobs)
-│   └── reports/                # Generated reports
-└── generations/                # Generated test projects (CLI mode)
-```
-
 ## Test Reports
 
 After tests complete, reports are generated with:
@@ -293,32 +227,6 @@ Failed tests automatically generate defect reports with:
 - Expected vs. actual results
 - Evidence links (screenshots, logs)
 - Environment information
-
-## CLI Mode (Alternative)
-
-For running tests directly without Web UI:
-
-```bash
-# Run autonomous agent
-bun run src/agent/index.ts --project-dir ./my_test
-
-# Use a specific model
-bun run src/agent/index.ts --project-dir ./my_test --model us.anthropic.claude-sonnet-4-5-20250929-v1:0
-
-# With iteration limit
-bun run src/agent/index.ts --project-dir ./my_test --max-iterations 5
-
-# Or use npm script
-bun run agent --project-dir ./my_test
-```
-
-### CLI Options
-
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--project-dir` | Directory for test project | `generations/autonomous_test_project` |
-| `--max-iterations` | Max agent iterations | Unlimited |
-| `--model` | Claude model to use | `us.anthropic.claude-sonnet-4-5-20250929-v1:0` |
 
 ## Security Model
 
@@ -415,18 +323,6 @@ bun test --coverage
 # Run specific test file
 bun test src/server/__tests__/api.test.ts
 ```
-
-### Test Coverage
-
-The Bun services have comprehensive test coverage:
-
-| Component | Functions | Lines |
-|-----------|-----------|-------|
-| JobManager | 100% | 100% |
-| ResultService | 100% | 100% |
-| API Routes | 100% | 88% |
-| CLI Utils | 100% | 92% |
-| Config | 100% | 91% |
 
 ## License
 

@@ -63,6 +63,17 @@ async function runInternalExecutor(): Promise<void> {
 	await runExecutor();
 }
 
+/**
+ * Run the agent directly (for compiled binary mode)
+ * Expects --project-dir and optionally --max-iterations as arguments
+ */
+async function runInternalAgent(): Promise<void> {
+	// Remove --internal-agent from argv so the agent's parseArgs doesn't see it
+	process.argv = process.argv.filter((arg) => arg !== "--internal-agent");
+	const { main: runAgent } = await import("../agent/index.ts");
+	await runAgent();
+}
+
 // ====================================
 // Help Command
 // ====================================
@@ -141,6 +152,12 @@ async function main(): Promise<void> {
 	if (command === "--internal-executor") {
 		process.env.DATA_DIR = process.env.DATA_DIR ?? DATA_DIR;
 		await runInternalExecutor();
+		return;
+	}
+
+	if (command === "--internal-agent") {
+		// Agent handles its own arguments (--project-dir, --max-iterations, etc.)
+		await runInternalAgent();
 		return;
 	}
 

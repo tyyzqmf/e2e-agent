@@ -3,15 +3,49 @@
  * =========================
  *
  * Functions for loading prompt templates from the prompts directory.
+ * Templates are embedded at compile time for single-binary support.
  */
 
-import { cpSync, existsSync, mkdirSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+
+// Embed templates at compile time for single-binary support
+import testReportViewerHtml from "../templates/Test_Report_Viewer.html" with { type: "text" };
+import defectReportMd from "../templates/defect-report.md" with { type: "text" };
+import testCaseReportMd from "../templates/test-case-report.md" with { type: "text" };
+import testSummaryReportMd from "../templates/test-summary-report.md" with { type: "text" };
+
+// Embed prompts at compile time
+import testPlannerPromptMd from "../prompts/test_planner_prompt.md" with { type: "text" };
+import testExecutorPromptMd from "../prompts/test_executor_prompt.md" with { type: "text" };
+import testReportPromptMd from "../prompts/test_report_prompt.md" with { type: "text" };
+
+/**
+ * Embedded templates map
+ */
+const EMBEDDED_TEMPLATES: Record<string, string> = {
+	"Test_Report_Viewer.html": testReportViewerHtml,
+	"defect-report.md": defectReportMd,
+	"test-case-report.md": testCaseReportMd,
+	"test-summary-report.md": testSummaryReportMd,
+};
+
+/**
+ * Embedded prompts map
+ */
+const EMBEDDED_PROMPTS: Record<string, string> = {
+	"test_planner_prompt": testPlannerPromptMd,
+	"test_executor_prompt": testExecutorPromptMd,
+	"test_report_prompt": testReportPromptMd,
+};
 
 // Get the directory where this module is located
 const MODULE_DIR = dirname(new URL(import.meta.url).pathname);
 
-// Directory Constants
+// Check if running as compiled binary
+const IS_COMPILED = MODULE_DIR.includes("/$bunfs/") || !MODULE_DIR.includes("/src/agent/");
+
+// Directory Constants (only used in development mode)
 export const PROMPTS_DIR = join(MODULE_DIR, "..", "prompts");
 export const TEMPLATES_DIR = join(MODULE_DIR, "..", "templates");
 export const UTILS_DIR = join(MODULE_DIR, "..", "utils");
@@ -85,11 +119,18 @@ export function validateDestName(destName: string): string {
 
 /**
  * Load a prompt template from the prompts directory.
+ * Uses embedded prompts in compiled mode.
  *
  * @param name - Name of the prompt file (without .md extension)
  * @returns Content of the prompt template
  */
 export async function loadPrompt(name: string): Promise<string> {
+	// Use embedded prompt in compiled mode
+	if (IS_COMPILED && EMBEDDED_PROMPTS[name]) {
+		return EMBEDDED_PROMPTS[name];
+	}
+
+	// Fall back to file system in development mode
 	const promptPath = join(PROMPTS_DIR, `${name}.md`);
 	const file = Bun.file(promptPath);
 	return await file.text();
@@ -172,10 +213,27 @@ export function copyToProject(
 
 /**
  * Copy the test spec file into the project directory for the agent to read.
+ * In compiled mode or when using executor, test_spec.txt is already in the project dir.
  *
  * @param projectDir - Target project directory
  */
 export function copyTestSpecToProject(projectDir: string): void {
+	const validatedDir = validateProjectDirectory(projectDir);
+	const testSpecPath = join(validatedDir, "test_spec.txt");
+
+	// If test_spec.txt already exists in project dir (e.g., from executor), skip
+	if (existsSync(testSpecPath)) {
+		console.log("test_spec.txt already exists in project directory");
+		return;
+	}
+
+	// In compiled mode without existing test_spec, this is an error
+	if (IS_COMPILED) {
+		console.log("test_spec.txt not found in project directory (compiled mode)");
+		return;
+	}
+
+	// In development mode, try to copy from root
 	copyToProject(
 		projectDir,
 		join(ROOT_DIR, "test_spec.txt"),
@@ -186,20 +244,47 @@ export function copyTestSpecToProject(projectDir: string): void {
 
 /**
  * Copy the templates into the project directory for the agent to read.
+ * Uses embedded templates in compiled mode.
  *
  * @param projectDir - Target project directory
  */
 export function copyTemplatesToProject(projectDir: string): void {
+	const validatedDir = validateProjectDirectory(projectDir);
+	const templatesDir = join(validatedDir, "templates");
+
+	if (existsSync(templatesDir)) {
+		console.log("templates already exists in project directory");
+		return;
+	}
+
+	// In compiled mode, write embedded templates
+	if (IS_COMPILED) {
+		mkdirSync(templatesDir, { recursive: true });
+		for (const [filename, content] of Object.entries(EMBEDDED_TEMPLATES)) {
+			const destPath = join(templatesDir, filename);
+			writeFileSync(destPath, content);
+		}
+		console.log("Copied templates to project directory (from embedded)");
+		return;
+	}
+
+	// In development mode, copy from source
 	copyToProject(projectDir, TEMPLATES_DIR, "templates", true);
 }
 
 /**
  * Copy the utils directory into the project directory for the agent to use.
- * Only copies if the utils directory exists.
+ * Only copies if the utils directory exists. Skipped in compiled mode.
  *
  * @param projectDir - Target project directory
  */
 export function copyUtilsToProject(projectDir: string): void {
+	// Skip in compiled mode - utils are not needed
+	if (IS_COMPILED) {
+		console.log("Utils copy skipped (compiled mode)");
+		return;
+	}
+
 	if (!existsSync(UTILS_DIR)) {
 		console.log("Utils directory not found, skipping copy");
 		return;

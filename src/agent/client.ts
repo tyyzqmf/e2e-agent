@@ -258,6 +258,65 @@ function convertMcpServersToSdkFormat(
 }
 
 // ====================================
+// Claude Code Executable Detection
+// ====================================
+
+/**
+ * Find the Claude Code executable path
+ * Searches common installation locations
+ */
+function findClaudeCodeExecutable(): string | undefined {
+	const { execSync } = require("node:child_process");
+	const { existsSync } = require("node:fs");
+	const { join } = require("node:path");
+
+	// Common paths to check
+	const commonPaths = [
+		// User's npm global bin
+		join(process.env.HOME ?? "/root", ".npm-global", "bin", "claude"),
+		// Standard npm global locations
+		"/usr/local/bin/claude",
+		"/usr/bin/claude",
+		// nvm installations
+		join(
+			process.env.HOME ?? "/root",
+			".nvm",
+			"versions",
+			"node",
+			process.version,
+			"bin",
+			"claude",
+		),
+		// Homebrew on macOS
+		"/opt/homebrew/bin/claude",
+		"/usr/local/opt/claude/bin/claude",
+	];
+
+	// First, try 'which' command
+	try {
+		const result = execSync("which claude", {
+			encoding: "utf-8",
+			stdio: ["pipe", "pipe", "pipe"],
+		}).trim();
+		if (result && existsSync(result)) {
+			return result;
+		}
+	} catch {
+		// 'which' failed, continue checking common paths
+	}
+
+	// Check common paths
+	for (const p of commonPaths) {
+		if (existsSync(p)) {
+			return p;
+		}
+	}
+
+	// Not found
+	return undefined;
+}
+
+// ====================================
 // SDK Options Builder
 // ====================================
 
@@ -352,6 +411,12 @@ export async function createSdkOptions(
 		console.log("[Session] Starting new session");
 	}
 
+	// Find Claude Code executable path
+	const claudeExecutablePath = findClaudeCodeExecutable();
+	if (claudeExecutablePath) {
+		console.log(`[SDK] Using Claude Code executable: ${claudeExecutablePath}`);
+	}
+
 	// Build SDK options
 	const options: SDKOptions = {
 		model,
@@ -368,6 +433,7 @@ export async function createSdkOptions(
 			path,
 		})),
 		resume: resumeSessionId,
+		pathToClaudeCodeExecutable: claudeExecutablePath,
 	};
 
 	return { options, authConfig };

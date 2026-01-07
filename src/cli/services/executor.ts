@@ -17,6 +17,8 @@ import {
 	colors,
 	DATA_DIR,
 	EXECUTOR_PID_FILE,
+	getExecutablePath,
+	isCompiledBinary,
 	PROJECT_ROOT,
 	removePidFile,
 	writePid,
@@ -160,16 +162,30 @@ export class TestExecutor {
 			// Prepare workspace
 			const projectDir = this.prepareWorkspace(job);
 
-			// Build command - use TypeScript agent instead of Python
-			const cmd = [
-				"bun",
-				"run",
-				join(this.config.baseDir, "src", "agent", "index.ts"),
-				"--project-dir",
-				projectDir,
-				"--max-iterations",
-				"50",
-			];
+			// Build command - use internal agent in compiled mode, bun run in dev mode
+			let cmd: string[];
+			if (isCompiledBinary()) {
+				// In compiled mode, use the executable with --internal-agent
+				cmd = [
+					getExecutablePath(),
+					"--internal-agent",
+					"--project-dir",
+					projectDir,
+					"--max-iterations",
+					"50",
+				];
+			} else {
+				// In development mode, use bun run
+				cmd = [
+					"bun",
+					"run",
+					join(this.config.baseDir, "src", "agent", "index.ts"),
+					"--project-dir",
+					projectDir,
+					"--max-iterations",
+					"50",
+				];
+			}
 
 			log("INFO", `Executing: ${cmd.join(" ")}`);
 

@@ -156,7 +156,7 @@ function parseCliArgs(): {
 // Main Entry Point
 // ====================================
 
-async function main(): Promise<void> {
+export async function main(): Promise<void> {
 	const args = parseCliArgs();
 
 	if (args.help) {
@@ -205,8 +205,10 @@ async function main(): Promise<void> {
 	}
 }
 
-// Run if this is the main module
-main().catch((error) => {
-	console.error(`Unhandled error: ${error}`);
-	process.exit(2);
-});
+// Run if this is the main module (not imported)
+if (import.meta.main) {
+	main().catch((error) => {
+		console.error(`Unhandled error: ${error}`);
+		process.exit(2);
+	});
+}
