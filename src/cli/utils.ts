@@ -4,7 +4,8 @@
  * Common utilities for CLI operations using Bun's native APIs.
  */
 
-import { dirname, join } from "node:path";
+import { existsSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { $ } from "bun";
 
@@ -12,12 +13,52 @@ import { $ } from "bun";
 // Path Configuration
 // ====================================
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-export const PROJECT_ROOT = join(__dirname, "..", "..");
+/**
+ * Determine project root directory.
+ * - In development: use import.meta.url to find src/cli relative path
+ * - In compiled binary: use current working directory or E2E_HOME env var
+ */
+function getProjectRoot(): string {
+	// Check for explicit override via environment variable
+	if (process.env.E2E_HOME) {
+		return resolve(process.env.E2E_HOME);
+	}
+
+	// Try to determine if we're running as a compiled binary
+	// In compiled mode, import.meta.url points to a virtual path
+	const metaUrl = import.meta.url;
+	const isCompiled =
+		metaUrl.startsWith("file:///") === false ||
+		metaUrl.includes("/$bunfs/") ||
+		!metaUrl.includes("/src/cli/");
+
+	if (isCompiled) {
+		// In compiled mode, use current working directory
+		return process.cwd();
+	}
+
+	// In development mode, calculate from source file location
+	const __dirname = dirname(fileURLToPath(metaUrl));
+	return join(__dirname, "..", "..");
+}
+
+export const PROJECT_ROOT = getProjectRoot();
 export const DATA_DIR = join(PROJECT_ROOT, "data");
 export const LOGS_DIR = join(PROJECT_ROOT, "logs");
 export const EXECUTOR_PID_FILE = join(DATA_DIR, "executor.pid");
 export const BUN_PID_FILE = join(DATA_DIR, "bun.pid");
+
+/**
+ * Check if running as a compiled binary
+ */
+export function isCompiledBinary(): boolean {
+	const metaUrl = import.meta.url;
+	return (
+		metaUrl.startsWith("file:///") === false ||
+		metaUrl.includes("/$bunfs/") ||
+		!metaUrl.includes("/src/cli/")
+	);
+}
 
 // ====================================
 // ANSI Color Codes

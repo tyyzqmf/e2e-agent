@@ -17,15 +17,60 @@ An autonomous testing framework that uses the Claude Agent SDK to execute compre
 - **Security-First**: Multi-layer security (sandbox, filesystem restrictions, tool permissions)
 - **Modern Runtime**: Built with Bun for fast startup and excellent TypeScript support
 
-## Prerequisites
+## Installation
 
-**Required:**
+### Option 1: Pre-built Binary (Recommended)
+
+Download the pre-built executable for your platform - no Bun or Node.js installation required:
 
 ```bash
+# Linux x64
+curl -fsSL https://github.com/anthropics/e2e-agent/releases/latest/download/e2e-linux-x64 -o e2e
+chmod +x e2e
+sudo mv e2e /usr/local/bin/
+
+# Linux ARM64 (AWS Graviton, Apple Silicon Linux VMs)
+curl -fsSL https://github.com/anthropics/e2e-agent/releases/latest/download/e2e-linux-arm64 -o e2e
+chmod +x e2e
+sudo mv e2e /usr/local/bin/
+
+# macOS Apple Silicon (M1/M2/M3)
+curl -fsSL https://github.com/anthropics/e2e-agent/releases/latest/download/e2e-macos-arm64 -o e2e
+chmod +x e2e
+sudo mv e2e /usr/local/bin/
+
+# macOS Intel
+curl -fsSL https://github.com/anthropics/e2e-agent/releases/latest/download/e2e-macos-x64 -o e2e
+chmod +x e2e
+sudo mv e2e /usr/local/bin/
+```
+
+**Windows:** Download `e2e-windows.exe` from the [releases page](https://github.com/anthropics/e2e-agent/releases) and add to your PATH.
+
+### Option 2: From Source
+
+If you prefer to run from source or want to contribute:
+
+```bash
+# Clone the repository
+git clone https://github.com/anthropics/e2e-agent.git
+cd e2e-agent
+
 # Install Bun (https://bun.sh)
 curl -fsSL https://bun.sh/install | bash
-bun --version
 
+# Install dependencies
+bun install
+
+# Use the CLI
+./e2e --help
+```
+
+## Prerequisites
+
+**Required (for both installation methods):**
+
+```bash
 # Install Node.js (for Chrome DevTools MCP)
 node --version
 npx --version

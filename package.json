@@ -1,5 +1,5 @@
 {
-  "name": "e2e-agent-web",
+  "name": "e2e-agent",
   "version": "2.0.0",
   "type": "module",
   "scripts": {
@@ -14,7 +14,13 @@
     "lint:fix": "bunx biome check --write src/",
     "format": "bunx biome format --write src/",
     "agent": "bun run src/agent/index.ts",
-    "agent:help": "bun run src/agent/index.ts --help"
+    "agent:help": "bun run src/agent/index.ts --help",
+    "build": "bun run build:linux-x64 && bun run build:linux-arm64 && bun run build:macos-arm64 && bun run build:macos-x64",
+    "build:linux-x64": "bun build --compile --target=bun-linux-x64 ./e2e.ts --outfile dist/e2e-linux-x64",
+    "build:linux-arm64": "bun build --compile --target=bun-linux-arm64 ./e2e.ts --outfile dist/e2e-linux-arm64",
+    "build:macos-arm64": "bun build --compile --target=bun-darwin-arm64 ./e2e.ts --outfile dist/e2e-macos-arm64",
+    "build:macos-x64": "bun build --compile --target=bun-darwin-x64 ./e2e.ts --outfile dist/e2e-macos-x64",
+    "build:windows": "bun build --compile --target=bun-windows-x64 ./e2e.ts --outfile dist/e2e-windows.exe"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.1.0",

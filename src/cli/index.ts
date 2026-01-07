@@ -30,6 +30,7 @@ import {
 import { checkRequirements, setupEnvironment } from "./env-check.ts";
 import {
 	ensureDirectories,
+	isCompiledBinary,
 	PROJECT_ROOT,
 	printError,
 	printHeader,
@@ -93,8 +94,10 @@ Environment Variables:
 // ====================================
 
 async function main(): Promise<void> {
-	// Change to project root
-	process.chdir(PROJECT_ROOT);
+	// Change to project root (only in development mode)
+	if (!isCompiledBinary()) {
+		process.chdir(PROJECT_ROOT);
+	}
 
 	// Ensure directories exist
 	await ensureDirectories();
