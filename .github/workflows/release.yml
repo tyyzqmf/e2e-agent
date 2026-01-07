@@ -23,7 +23,7 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            target: bun-linux-x64
+            target: bun-linux-x64-baseline
             artifact: e2e-linux-x64
           - os: ubuntu-latest
             target: bun-linux-arm64

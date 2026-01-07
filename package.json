@@ -16,7 +16,7 @@
     "agent": "bun run src/agent/index.ts",
     "agent:help": "bun run src/agent/index.ts --help",
     "build": "bun run build:linux-x64 && bun run build:linux-arm64 && bun run build:macos-arm64 && bun run build:macos-x64",
-    "build:linux-x64": "bun build --compile --target=bun-linux-x64 ./e2e.ts --outfile dist/e2e-linux-x64",
+    "build:linux-x64": "bun build --compile --target=bun-linux-x64-baseline ./e2e.ts --outfile dist/e2e-linux-x64",
     "build:linux-arm64": "bun build --compile --target=bun-linux-arm64 ./e2e.ts --outfile dist/e2e-linux-arm64",
     "build:macos-arm64": "bun build --compile --target=bun-darwin-arm64 ./e2e.ts --outfile dist/e2e-macos-arm64",
     "build:macos-x64": "bun build --compile --target=bun-darwin-x64 ./e2e.ts --outfile dist/e2e-macos-x64",
