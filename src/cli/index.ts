@@ -38,6 +38,10 @@ import {
 	printSuccess,
 } from "./utils.ts";
 
+// Version information
+const VERSION = "0.2.5";
+const BUILD_DATE = "2026-01-07";
+
 // ====================================
 // Internal Service Runners
 // ====================================
@@ -63,13 +67,20 @@ async function runInternalExecutor(): Promise<void> {
 // Help Command
 // ====================================
 
+function showVersion(): void {
+	console.log(`E2E Testing Framework v${VERSION}`);
+	console.log(`Build date: ${BUILD_DATE}`);
+	console.log(`Runtime: Bun ${Bun.version}`);
+}
+
 function showHelp(): void {
-	console.log(`E2E Testing Framework CLI
+	console.log(`E2E Testing Framework CLI v${VERSION}
 
 Usage: e2e <command> [subcommand] [options]
 
 Commands:
   help                     Show this help message
+  version                  Show version information
   check                    Check environment requirements
 
   start [service]          Start services
@@ -149,6 +160,12 @@ async function main(): Promise<void> {
 			case "-h":
 			case "--help":
 				showHelp();
+				break;
+
+			case "version":
+			case "-v":
+			case "--version":
+				showVersion();
 				break;
 
 			case "check": {
