@@ -115,8 +115,19 @@ describe("Tools Configuration", () => {
 });
 
 describe("MCP Servers Configuration", () => {
-	test("CHROME_EXECUTABLE_PATH is defined", () => {
-		expect(CHROME_EXECUTABLE_PATH).toBe("/usr/bin/google-chrome");
+	test("CHROME_EXECUTABLE_PATH is platform-specific", () => {
+		expect(typeof CHROME_EXECUTABLE_PATH).toBe("string");
+		expect(CHROME_EXECUTABLE_PATH.length).toBeGreaterThan(0);
+
+		// Verify it contains 'chrome' (case-insensitive)
+		expect(CHROME_EXECUTABLE_PATH.toLowerCase()).toContain("chrome");
+
+		// Platform-specific checks
+		if (process.platform === "darwin") {
+			expect(CHROME_EXECUTABLE_PATH).toContain("/Applications/");
+		} else if (process.platform === "linux") {
+			expect(CHROME_EXECUTABLE_PATH).toBe("/usr/bin/google-chrome");
+		}
 	});
 
 	test("DEFAULT_CHROME_ARGS contains security flags", () => {

@@ -15,9 +15,29 @@ export interface McpServerConfig {
 }
 
 /**
- * Default Chrome executable path
+ * Get the default Chrome executable path based on the platform
  */
-export const CHROME_EXECUTABLE_PATH = "/usr/bin/google-chrome";
+function getDefaultChromePath(): string {
+	const platform = process.platform;
+
+	if (platform === "darwin") {
+		// macOS
+		return "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+	}
+
+	if (platform === "win32") {
+		// Windows
+		return "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+	}
+
+	// Linux (default)
+	return "/usr/bin/google-chrome";
+}
+
+/**
+ * Default Chrome executable path (platform-specific)
+ */
+export const CHROME_EXECUTABLE_PATH = getDefaultChromePath();
 
 /**
  * Default Chrome arguments for headless operation in containerized environments
