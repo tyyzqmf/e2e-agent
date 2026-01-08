@@ -1,6 +1,6 @@
 {
   "name": "e2e-agent",
-  "version": "0.2.9",
+  "version": "0.3.0",
   "type": "module",
   "scripts": {
     "start": "bun run src/server/index.ts",

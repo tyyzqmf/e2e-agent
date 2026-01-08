@@ -68,10 +68,14 @@ export async function startExecutor(): Promise<boolean> {
 	// Get the command to start executor
 	const cmd = getServiceCommand("--internal-executor");
 
-	// Start executor with setsid to create new process group
+	// Start executor in background
+	// On Linux, use setsid to create new process group
+	// On macOS, rely on nohup and proc.unref() for detachment
 	try {
+		const isLinux = process.platform === "linux";
+		const fullCmd = isLinux ? ["setsid", "nohup", ...cmd] : ["nohup", ...cmd];
 		const proc = spawn({
-			cmd: ["setsid", "nohup", ...cmd],
+			cmd: fullCmd,
 			cwd: PROJECT_ROOT,
 			stdout: Bun.file(logFile),
 			stderr: Bun.file(logFile),
