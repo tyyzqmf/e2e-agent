@@ -1,321 +1,139 @@
-# E2E Agent - Autonomous End-to-End Testing Framework
+# E2E Agent
 
-An autonomous testing framework that uses the Claude Agent SDK to execute comprehensive end-to-end tests with browser automation. The system provides a Web UI for managing test jobs and uses a two-agent pattern (test planner + test executor) to plan and execute tests autonomously.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE.md)
+[![Bun](https://img.shields.io/badge/runtime-bun-f472b6)](https://bun.sh)
+[![Claude](https://img.shields.io/badge/powered%20by-claude-orange)](https://claude.ai)
+
+**Create AI-powered end-to-end tests** that plan, execute, and document themselves.
 
 ![demo](docs/v1.gif)
 
-- [Effective harnesses for long-running agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents)
+Write test specs in plain English. The AI agent plans comprehensive test cases, executes them in a real browser, captures evidence (screenshots, logs), and generates professional test reports—all autonomously.
 
-## Features
+### Why E2E Agent?
 
-- **Web UI Management**: Create, monitor, and manage test jobs through a web interface
-- **Autonomous Test Execution**: AI agent plans and executes tests without human intervention
-- **Browser Automation**: Chrome DevTools MCP for comprehensive browser inspection and automation
-- **Evidence Collection**: Automatic screenshots, API logs, and console logs for every test
-- **Professional Reports**: Industry-standard test case reports and defect documentation
-- **Long-Running Sessions**: Stateless agent pattern with progress persistence across sessions
-- **Security-First**: Multi-layer security (sandbox, filesystem restrictions, tool permissions)
-- **Modern Runtime**: Built with Bun for fast startup and excellent TypeScript support
+- **Natural Language Testing**: Describe what to test, not how to test it
+- **Autonomous Execution**: Agent handles test planning, execution, and reporting
+- **Real Browser Testing**: Uses Chrome DevTools for authentic end-to-end validation
+- **Professional Reports**: Industry-standard test cases and defect documentation
+- **Long-Running Capability**: Stateless sessions with automatic progress checkpoints
+
+Read the [Anthropic blog post](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents) on building effective agent harnesses.
 
 ## Installation
-
-### Option 1: One-Line Install (Recommended)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/tyyzqmf/e2e-agent/main/install.sh | bash
 ```
 
-Or install a specific version:
+Or [build from source](docs/installation.md#build-from-source).
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/tyyzqmf/e2e-agent/main/install.sh | bash -s -- v2.0.0
-```
+**Prerequisites:**
+- Node.js & Chrome/Chromium browser
+- AWS Bedrock access OR Anthropic API key
 
-Verify installation:
+<details>
+<summary>Configure API credentials</summary>
 
-```bash
-e2e version
-e2e check
-```
-
-### Option 2: From Source
-
-If you prefer to run from source or want to contribute:
-
-```bash
-# Clone the repository
-git clone https://github.com/tyyzqmf/e2e-agent.git
-cd e2e-agent
-
-# Install Bun (https://bun.sh)
-curl -fsSL https://bun.sh/install | bash
-
-# Install dependencies
-bun install
-
-# Use the CLI
-./e2e --help
-```
-
-## Prerequisites
-
-**Required (for both installation methods):**
-
-```bash
-# Install Node.js (for Chrome DevTools MCP)
-node --version
-npx --version
-
-# Install Chrome/Chromium browser
-google-chrome --version
-```
-
-**API Configuration:** Choose one option:
-
-**Option 1 - AWS Bedrock (Recommended):**
+**AWS Bedrock (Recommended):**
 ```bash
 export CLAUDE_CODE_USE_BEDROCK=1
 export AWS_REGION=us-west-2
-
-# Recommended output token settings for Bedrock
-export CLAUDE_CODE_MAX_OUTPUT_TOKENS=4096
-export MAX_THINKING_TOKENS=1024
-
-# Configure AWS credentials
 aws configure
 ```
 
-**Option 2 - Anthropic API:**
+**Anthropic API:**
 ```bash
 export ANTHROPIC_API_KEY='your-api-key-here'
 ```
+
+See [full configuration guide](docs/configuration.md).
+</details>
 
 ## Quick Start
 
-### 1. Check Environment
-
 ```bash
-./e2e check         # Verify all dependencies are installed
+# 1. Check dependencies
+e2e check
+
+# 2. Start services (Web UI + Executor)
+e2e start
 ```
 
-### 2. Start Services
+Open http://localhost:5000 to:
+1. Write test specs in plain English
+2. Submit test job
+3. Monitor autonomous execution
+4. Download test reports
 
+Or use the CLI:
 ```bash
-./e2e start         # Start all services (executor + web UI)
-
-# Access Web UI at http://localhost:5000
+e2e job submit quick-start.md    # Submit test job
+e2e job status <job-id>          # Check progress
+e2e stop                         # Stop services
 ```
 
-### 3. Submit Test Job
-
-**Option A - Via Web UI:**
-1. Open http://localhost:5000 in your browser
-2. Fill in test specification (application details, test scenarios, credentials)
-3. Submit and monitor progress
-
-**Option B - Via CLI (no web service required):**
-```bash
-./e2e job submit quick-start.md   # Submit job (auto-starts executor if needed)
-./e2e job list                    # List all jobs
-./e2e job status <job-id>         # Check job progress
-```
-
-### 4. Stop
-
-```bash
-./e2e stop          # Stop all services
-```
-
-## CLI Commands
-
-| Command | Description |
-|---------|-------------|
-| `./e2e help` | Show help message |
-| `./e2e version` | Show version information |
-| `./e2e check` | Check environment requirements |
-| `./e2e start` | Start all services (executor + web) |
-| `./e2e start executor` | Start only the executor |
-| `./e2e start web` | Start only the web service |
-| `./e2e stop` | Stop all services |
-| `./e2e stop executor` | Stop only the executor |
-| `./e2e stop web` | Stop only the web service |
-| `./e2e job submit <file>` | Submit a test job |
-| `./e2e job list` | List all jobs |
-| `./e2e job status <id>` | Get job status |
-| `./e2e job cancel <id>` | Cancel a job |
-| `./e2e log executor` | View executor logs |
-| `./e2e log web` | View web logs |
-| `./e2e status` | Show service status |
+See [all CLI commands](docs/cli-reference.md).
 
 ## How It Works
 
-### Architecture
-
-```
-┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│   Web UI        │────▶│   Job Queue      │────▶│   Executor      │
-│  (Bun Server)   │     │  (SQLite DB)     │     │  (Background)   │
-└─────────────────┘     └──────────────────┘     └─────────────────┘
-                                                         │
-                                                         ▼
-                                                ┌─────────────────┐
-                                                │  Claude Agent   │
-                                                │  (Planner/Exec) │
-                                                └─────────────────┘
-```
-
 ### Two-Agent Pattern
 
-The framework uses a stateless two-agent approach:
-
-1. **Test Planner Agent (Session 1):**
-   - Reads test specification (includes test cases and environment config)
-   - Generates `test_cases.json` with detailed test cases
-   - Generates `test_env.json` with extracted environment configuration
-   - Sets up test report structure and templates
-
-2. **Test Executor Agent (Sessions 2+):**
-   - Executes test cases one by one from `test_cases.json`
-   - Uses Chrome DevTools MCP for browser automation
-   - Captures evidence (screenshots, logs) at each step
-   - Updates test status (Pass/Fail/Blocked)
-   - Creates defect reports for failures
-   - Auto-continues until all tests complete
-
-### Progress Persistence
-
-Each session runs with a fresh context window. Progress persists through:
-- **`test_cases.json`**: Single source of truth for test status
-- **`claude-progress.txt`**: Session notes and next steps
-
-## Test Reports
-
-After tests complete, reports are generated with:
-
-- **Test_Report_Viewer.html**: Interactive HTML report viewer
-- **test-case-reports/**: Individual test case reports (TC-*.md)
-- **defect-reports/**: Defect documentation (DEFECT-*.md)
-- **test-summary-report.md**: Overall test execution summary
-- **screenshots/**: Visual evidence for each test step
-- **logs/**: API and console logs for failed tests
-
-### Evidence Collection
-
-Every test execution captures:
-1. **Screenshots** at each major step
-2. **API logs** for failed network requests
-3. **Console logs** for JavaScript errors
-4. **Test results** with actual vs. expected outcomes
-
-### Defect Documentation
-
-Failed tests automatically generate defect reports with:
-- Severity classification (Critical/High/Medium/Low)
-- Steps to reproduce
-- Expected vs. actual results
-- Evidence links (screenshots, logs)
-- Environment information
-
-## Security Model
-
-The framework implements defense-in-depth security:
-
-1. **OS-level Sandbox**: Bash commands run in isolated environment
-2. **Filesystem Restrictions**: File operations restricted to project directory only
-3. **Tool Permissions**: Explicit allowlist for all tools and MCP servers
-
-See `src/agent/client.ts` and `src/agent/security/` for implementation details.
-
-## Browser Automation
-
-Uses **Chrome DevTools MCP** for browser automation with features:
-- Comprehensive browser inspection
-- Network request/response capture
-- Console log collection
-- Multi-tab management
-- Screenshot and snapshot functionality
-
-Configured with sandbox-safe flags for containerized environments.
-
-## Customization
-
-### Adjust Test Count
-
-Edit `src/agent/prompts/test_planner_prompt.md` and change the test case count (default: ~50). Use smaller numbers (10-20) for faster demos.
-
-### Modify Agent Behavior
-
-- **Test Planning**: Edit `src/agent/prompts/test_planner_prompt.md`
-- **Test Execution**: Edit `src/agent/prompts/test_executor_prompt.md`
-
-## Troubleshooting
-
-**"Missing dependencies" error**
-```bash
-./e2e check    # See which dependencies are missing
+```
+Test Spec (Plain English)
+         ↓
+┌────────────────────────┐
+│  1. Test Planner       │  Generates test_cases.json
+│     (Session 1)        │  with detailed test plans
+└────────────────────────┘
+         ↓
+┌────────────────────────┐
+│  2. Test Executor      │  Executes tests in Chrome
+│     (Sessions 2+)      │  Captures evidence
+│                        │  Generates reports
+└────────────────────────┘
 ```
 
-**"Web UI not accessible"**
-- Ensure `./e2e start` completed successfully
-- Check if port 5000 is available
-- Check logs: `./e2e log web`
+**Stateless Sessions**: Each agent run has a fresh context. Progress persists through `test_cases.json` (test status) and `claude-progress.txt` (session notes).
 
-**"Tests not executing"**
-- Verify executor is running: `./e2e status`
-- Check executor logs: `./e2e log executor`
-- Ensure AWS/Anthropic credentials are configured
+**Autonomous Execution**: The executor agent runs continuously, auto-continuing until all tests complete or a blocking issue occurs.
 
-**"AWS credentials not found"**
-```bash
-export CLAUDE_CODE_USE_BEDROCK=1
-export AWS_REGION=us-west-2
-aws configure  # Or set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
-```
+See [architecture details](docs/architecture.md).
 
-**"ANTHROPIC_API_KEY not set"**
-```bash
-export ANTHROPIC_API_KEY='your-api-key-here'
-```
+## What You Get
 
-**"Chrome DevTools MCP not available"**
-- Ensure Node.js and npx are installed
-- Ensure Chrome/Chromium browser is installed
-- Run `./e2e stop` to cleanup processes and restart
+After test execution:
 
-**"Bun not found"**
-```bash
-# Install Bun
-curl -fsSL https://bun.sh/install | bash
-# Add to PATH (follow installer instructions)
-source ~/.bashrc  # or ~/.zshrc
-```
+- **Interactive HTML Report** with test results and evidence
+- **Test Case Reports** (TC-*.md) with step-by-step execution
+- **Defect Reports** (DEFECT-*.md) with severity, reproduction steps, and evidence
+- **Screenshots** at every major step
+- **API & Console Logs** for debugging failures
 
-## Requirements
+[Example reports →](docs/reports.md)
 
-- **Bun** >= 1.0.0 (All TypeScript code - CLI, Web Service, Agent)
-- Node.js and npx (Chrome DevTools MCP)
-- Chrome/Chromium browser
-- AWS Bedrock access OR Anthropic API key
+## Documentation
 
-## Development
+- **[Installation Guide](docs/installation.md)**: Detailed installation instructions
+- **[Configuration Guide](docs/configuration.md)**: API credentials and environment setup
+- **[CLI Reference](docs/cli-reference.md)**: Complete command reference
+- **[Architecture](docs/architecture.md)**: System design and implementation details
+- **[Test Reports](docs/reports.md)**: Understanding test reports and evidence
+- **[Troubleshooting](docs/troubleshooting.md)**: Common issues and solutions
+- **[CLAUDE.md](CLAUDE.md)**: Development guide for contributors
+- **[Anthropic Blog](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents)**: Design patterns for long-running agents
 
-### Running Tests
+## Tech Stack
 
-```bash
-# Run all tests
-bun test
-
-# Run tests with coverage
-bun test --coverage
-
-# Run specific test file
-bun test src/server/__tests__/api.test.ts
-```
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+- **Runtime**: [Bun](https://bun.sh) (TypeScript execution and web server)
+- **AI Agent**: [Claude Agent SDK](https://github.com/anthropics/anthropic-sdk-typescript)
+- **Browser Automation**: [Chrome DevTools MCP](https://github.com/modelcontextprotocol/servers/tree/main/src/chrome-devtools)
+- **Job Queue**: SQLite
 
 ## Contributing
 
-This is a demonstration framework for autonomous testing with Claude Agent SDK. Contributions are welcome!
+Contributions welcome! This is a demonstration framework for building autonomous testing agents.
+
+## License
+
+MIT - see [LICENSE.md](LICENSE.md)
