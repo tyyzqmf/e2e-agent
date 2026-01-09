@@ -22,7 +22,7 @@
     "build:macos-x64": "bun build --compile --target=bun-darwin-x64 ./e2e.ts --outfile dist/e2e-macos-x64"
   },
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.1.0",
+    "@anthropic-ai/claude-agent-sdk": "^0.2.2",
     "@aws-sdk/client-sts": "^3.700.0",
     "@aws-sdk/credential-providers": "^3.700.0"
   },
