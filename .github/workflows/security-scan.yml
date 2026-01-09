@@ -111,27 +111,12 @@ jobs:
 
   osv-scanner:
     name: OSV Scanner
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Run OSV Scanner
-        uses: google/osv-scanner-action@v2.3.1
-        with:
-          scan-args: |-
-            --lockfile=bun.lockb
-            --format=json
-            --output=osv-results.json
-        continue-on-error: true
-
-      - name: Upload OSV results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: osv-scan-results
-          path: osv-results.json
-          retention-days: 7
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.3.1
+    with:
+      scan-args: |-
+        --lockfile=bun.lockb
+      fail-on-vuln: false
+      upload-sarif: false
 
   license-check:
     name: License Compliance Check
