@@ -433,7 +433,9 @@ export async function createSdkOptions(
 			path,
 		})),
 		...(resumeSessionId ? { resume: resumeSessionId } : {}),
-		...(claudeExecutablePath ? { pathToClaudeCodeExecutable: claudeExecutablePath } : {}),
+		...(claudeExecutablePath
+			? { pathToClaudeCodeExecutable: claudeExecutablePath }
+			: {}),
 	};
 
 	return { options, authConfig };
