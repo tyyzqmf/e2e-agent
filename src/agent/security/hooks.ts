@@ -64,8 +64,12 @@ export interface HookMatcher {
  * that get added to the conversation context.
  */
 export async function truncateLargeToolOutput(
-	hookInput: PostToolUseHookInput,
+	hookInput: PostToolUseHookInput | PreCompactHookInput,
 ): Promise<HookOutput> {
+	// Only process PostToolUse hooks
+	if (!("toolName" in hookInput)) {
+		return { decision: "approve" };
+	}
 	const toolName = hookInput.toolName ?? "";
 	const toolResult = hookInput.toolResult ?? {};
 
@@ -104,10 +108,15 @@ export async function truncateLargeToolOutput(
  * or log when compaction is happening.
  */
 export async function preCompactHandler(
-	hookInput: PreCompactHookInput,
+	hookInput: PostToolUseHookInput | PreCompactHookInput,
 ): Promise<HookOutput> {
-	const trigger = hookInput.trigger ?? "unknown";
-	const sessionId = hookInput.sessionId ?? "unknown";
+	// Only process PreCompact hooks
+	if ("toolName" in hookInput) {
+		return { decision: "approve" };
+	}
+	const preCompactInput = hookInput as PreCompactHookInput;
+	const trigger = preCompactInput.trigger ?? "unknown";
+	const sessionId = preCompactInput.sessionId ?? "unknown";
 
 	console.log(
 		`[Hook] Context compaction triggered (${trigger}) for session ${sessionId}`,

@@ -379,16 +379,16 @@ export async function createSdkOptions(
 	}
 
 	const validatedPluginDirs = collectPluginDirectories({
-		pluginDirs: allPluginDirs.length > 0 ? allPluginDirs : undefined,
+		...(allPluginDirs.length > 0 ? { pluginDirs: allPluginDirs } : {}),
 		loadDefaultSkills,
 		verbose: true,
 	});
 
 	// Build system prompt
 	const finalSystemPrompt = buildSystemPrompt({
-		base: systemPrompt,
-		append: appendSystemPrompt,
-		skillContent,
+		...(systemPrompt ? { base: systemPrompt } : {}),
+		...(appendSystemPrompt ? { append: appendSystemPrompt } : {}),
+		...(skillContent ? { skillContent } : {}),
 	});
 
 	// Get MCP servers and tools
@@ -432,8 +432,10 @@ export async function createSdkOptions(
 			type: "local" as const,
 			path,
 		})),
-		resume: resumeSessionId,
-		pathToClaudeCodeExecutable: claudeExecutablePath,
+		...(resumeSessionId ? { resume: resumeSessionId } : {}),
+		...(claudeExecutablePath
+			? { pathToClaudeCodeExecutable: claudeExecutablePath }
+			: {}),
 	};
 
 	return { options, authConfig };
