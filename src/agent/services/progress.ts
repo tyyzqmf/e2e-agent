@@ -46,7 +46,7 @@ export async function loadTestCases(
 	const file = Bun.file(testCasesFile);
 	const content = await file.text();
 
-	let data;
+	let data: unknown;
 	try {
 		data = JSON.parse(content);
 	} catch (error) {

@@ -616,7 +616,10 @@ export class JobService {
 			try {
 				envConfig = JSON.parse(row.env_config);
 			} catch (error) {
-				console.error(`Failed to parse env_config for job ${row.job_id}:`, error);
+				console.error(
+					`Failed to parse env_config for job ${row.job_id}:`,
+					error,
+				);
 				// Use empty object as fallback
 			}
 		}

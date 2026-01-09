@@ -266,12 +266,12 @@ export class TestExecutor {
 				setTimeout(() => {
 					log("WARN", `Job ${jobId} stream flush timeout, forcing closure`);
 					resolve();
-				}, 5000)
+				}, 5000),
 			);
 
 			await Promise.race([
 				Promise.allSettled([stdoutPromise, stderrPromise]),
-				streamTimeout
+				streamTimeout,
 			]);
 
 			// Close streams

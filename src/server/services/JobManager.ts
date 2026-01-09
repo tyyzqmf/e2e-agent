@@ -434,7 +434,10 @@ export class JobManager {
 			try {
 				envConfig = JSON.parse(row.env_config);
 			} catch (error) {
-				logger.error(`Failed to parse env_config for job ${row.job_id}:`, error);
+				logger.error(
+					`Failed to parse env_config for job ${row.job_id}:`,
+					error,
+				);
 				// Use empty object as fallback
 			}
 		}

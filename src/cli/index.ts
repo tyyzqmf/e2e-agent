@@ -17,6 +17,8 @@
  *   status                   Show service status
  */
 
+// Import version from package.json (single source of truth)
+import packageJson from "../../package.json";
 import { handleJobCommand } from "./commands/jobs.ts";
 import { handleLogCommand, showStatus } from "./commands/logs.ts";
 import {
@@ -37,9 +39,6 @@ import {
 	printHeader,
 	printSuccess,
 } from "./utils.ts";
-
-// Import version from package.json (single source of truth)
-import packageJson from "../../package.json";
 
 const VERSION = packageJson.version;
 
