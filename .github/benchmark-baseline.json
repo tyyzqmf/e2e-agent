@@ -1,0 +1,9 @@
+{
+  "timestamp": "2026-01-09T07:45:20Z",
+  "commit": "d9a9496cc773f1d87f65f60ca0ec5beacd291d97",
+  "benchmarks": {
+    "cli_startup_ms": "TBD",
+    "build_time_ms": "TBD",
+    "binary_size_mb": "TBD"
+  }
+}
