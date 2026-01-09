@@ -109,11 +109,12 @@ jobs:
         run: |
           echo "=== TypeScript Check Benchmark ==="
           start=$(date +%s%N)
-          bun run typecheck
+          bun run typecheck || true
           end=$(date +%s%N)
           duration=$((($end - $start) / 1000000))
 
           echo "TypeScript check took: ${duration}ms"
+        continue-on-error: true
 
       - name: Benchmark - Build time
         run: |

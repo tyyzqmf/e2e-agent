@@ -30,6 +30,7 @@ jobs:
         with:
           fail-on-severity: moderate
           comment-summary-in-pr: always
+        continue-on-error: true  # Requires Dependency graph to be enabled in repo settings
 
   trivy-scan:
     name: Trivy Security Scan
@@ -116,7 +117,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run OSV Scanner
-        uses: google/osv-scanner-action@v1
+        uses: google/osv-scanner-action@v1.9.0
         with:
           scan-args: |-
             --lockfile=bun.lockb
