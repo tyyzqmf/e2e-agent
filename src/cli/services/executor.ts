@@ -5,6 +5,7 @@
  */
 
 import {
+	chmodSync,
 	createWriteStream,
 	existsSync,
 	mkdirSync,
@@ -24,6 +25,35 @@ import {
 	writePid,
 } from "../utils.ts";
 import { type Job, JobService } from "./job.ts";
+
+// ====================================
+// Security Utilities
+// ====================================
+
+/**
+ * Sanitize command string for logging by filtering out sensitive credentials.
+ * This prevents credential exposure in log files.
+ */
+function sanitizeCommandForLogging(cmd: string[]): string {
+	return cmd
+		.map((arg) => {
+			// Filter out values after credential-related flags
+			if (
+				arg.includes("ANTHROPIC_API_KEY=") ||
+				arg.includes("AWS_SECRET_ACCESS_KEY=") ||
+				arg.includes("AWS_ACCESS_KEY_ID=") ||
+				arg.includes("API_KEY=") ||
+				arg.includes("SECRET=") ||
+				arg.includes("TOKEN=") ||
+				arg.includes("PASSWORD=")
+			) {
+				const parts = arg.split("=");
+				return `${parts[0]}=***`;
+			}
+			return arg;
+		})
+		.join(" ");
+}
 
 // ====================================
 // Configuration
@@ -187,7 +217,7 @@ export class TestExecutor {
 				];
 			}
 
-			log("INFO", `Executing: ${cmd.join(" ")}`);
+			log("INFO", `Executing: ${sanitizeCommandForLogging(cmd)}`);
 
 			// Prepare environment - ensure AWS Bedrock settings are passed
 			const env = { ...process.env };
@@ -205,6 +235,22 @@ export class TestExecutor {
 
 			const stdoutPath = join(logDir, "execution_stdout.log");
 			const stderrPath = join(logDir, "execution_stderr.log");
+
+			// Ensure log files exist with secure permissions (owner read/write only)
+			// This prevents credential exposure if environment variables are logged
+			if (!existsSync(stdoutPath)) {
+				writeFileSync(stdoutPath, "", { mode: 0o600 });
+			}
+			if (!existsSync(stderrPath)) {
+				writeFileSync(stderrPath, "", { mode: 0o600 });
+			}
+			// Ensure permissions are correct even for existing files
+			try {
+				chmodSync(stdoutPath, 0o600);
+				chmodSync(stderrPath, 0o600);
+			} catch {
+				// Ignore permission errors (may not be supported on all platforms)
+			}
 
 			// Create write streams for incremental logging (ensures all output is captured even on crash)
 			const stdoutStream = createWriteStream(stdoutPath, { flags: "a" });

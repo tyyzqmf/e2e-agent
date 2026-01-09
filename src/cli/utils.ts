@@ -25,6 +25,33 @@ function checkIsCompiled(): boolean {
 }
 
 /**
+ * Validate a path to ensure it doesn't contain dangerous characters
+ * that could be used for command injection.
+ */
+function validatePath(path: string, paramName: string): string {
+	if (!path) {
+		throw new Error(`${paramName} cannot be empty`);
+	}
+
+	// Check for command injection characters
+	const dangerousChars = /[;&|`$(){}[\]<>]/;
+	if (dangerousChars.test(path)) {
+		throw new Error(`${paramName} contains invalid characters: ${path}`);
+	}
+
+	// Resolve to absolute path and normalize
+	const resolved = resolve(path);
+
+	// Additional safety check: ensure the resolved path doesn't escape
+	// expected boundaries (basic sanity check)
+	if (resolved.includes("..")) {
+		throw new Error(`${paramName} contains path traversal sequences: ${path}`);
+	}
+
+	return resolved;
+}
+
+/**
  * Get the E2E home directory for data and logs.
  * - In compiled mode: ~/.e2e (user's home directory)
  * - In development mode: project root directory
@@ -32,7 +59,15 @@ function checkIsCompiled(): boolean {
 function getE2EHome(): string {
 	// Check for explicit override via environment variable
 	if (process.env.E2E_HOME) {
-		return resolve(process.env.E2E_HOME);
+		try {
+			return validatePath(process.env.E2E_HOME, "E2E_HOME");
+		} catch (error) {
+			console.error(
+				`[Security] Invalid E2E_HOME environment variable: ${error}`,
+			);
+			console.error("[Security] Falling back to default location");
+			// Fall through to default behavior
+		}
 	}
 
 	if (checkIsCompiled()) {

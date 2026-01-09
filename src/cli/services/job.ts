@@ -144,6 +144,30 @@ export class JobService {
 		return this.rowToJob(row);
 	}
 
+	/**
+	 * Validate test specification content for security issues.
+	 * Returns null if valid, or error message if invalid.
+	 */
+	private validateTestSpecContent(content: string): string | null {
+		// Check for dangerous patterns that could be used for code injection
+		const dangerousPatterns = [
+			{ pattern: /`[^`]*\$\{/g, name: "template injection" },
+			{ pattern: /\beval\s*\(/gi, name: "eval() call" },
+			{ pattern: /\bexec\s*\(/gi, name: "exec() call" },
+			{ pattern: /<script[\s>]/gi, name: "script tag" },
+			{ pattern: /javascript:/gi, name: "javascript: protocol" },
+			{ pattern: /on\w+\s*=/gi, name: "event handler" },
+		];
+
+		for (const { pattern, name } of dangerousPatterns) {
+			if (pattern.test(content)) {
+				return `Test specification contains potentially dangerous content: ${name}`;
+			}
+		}
+
+		return null;
+	}
+
 	submitJob(specFile: string): string | null {
 		// Resolve path
 		const specPath = specFile.startsWith("/")
@@ -171,6 +195,13 @@ export class JobService {
 				console.error(
 					`${colors.red}Error:${colors.reset} Test specification is too long (max 100000 characters)`,
 				);
+				return null;
+			}
+
+			// Security validation
+			const validationError = this.validateTestSpecContent(testSpec);
+			if (validationError) {
+				console.error(`${colors.red}Error:${colors.reset} ${validationError}`);
 				return null;
 			}
 
@@ -483,8 +514,20 @@ export class JobService {
 				try {
 					process.kill(job.process_pid, 0);
 					processAlive = true;
-				} catch {
-					processAlive = false;
+				} catch (error) {
+					// Distinguish between ESRCH (process doesn't exist) and EPERM (permission denied)
+					// EPERM means the process exists but is owned by another user - should NOT recover
+					const err = error as NodeJS.ErrnoException;
+					if (err.code === "EPERM") {
+						// Process exists but owned by different user - keep as running
+						processAlive = true;
+						console.warn(
+							`[Warning] Job ${job.job_id} process ${job.process_pid} exists but owned by another user`,
+						);
+					} else {
+						// ESRCH or other error - process doesn't exist
+						processAlive = false;
+					}
 				}
 			}
 
