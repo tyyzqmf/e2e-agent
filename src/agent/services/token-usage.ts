@@ -27,7 +27,6 @@ export class TokenUsageTracker {
 	private statsFile: string;
 
 	constructor(projectDir: string, pricingCalculator?: PricingCalculator) {
-		this.projectDir = projectDir;
 		this.pricingCalculator = pricingCalculator ?? new PricingCalculator();
 		this.statsFile = join(projectDir, "usage_statistics.json");
 		this.data = this.loadOrInitialize();

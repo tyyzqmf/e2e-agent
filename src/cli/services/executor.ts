@@ -260,8 +260,19 @@ export class TestExecutor {
 			// Wait for process and streams to complete
 			const exitCode = await this.currentProcess.exited;
 
-			// Wait for streams to finish flushing
-			await Promise.allSettled([stdoutPromise, stderrPromise]);
+			// Wait for streams to finish flushing with timeout (5 seconds)
+			// This prevents hanging if streams don't close properly
+			const streamTimeout = new Promise<void>((resolve) =>
+				setTimeout(() => {
+					log("WARN", `Job ${jobId} stream flush timeout, forcing closure`);
+					resolve();
+				}, 5000)
+			);
+
+			await Promise.race([
+				Promise.allSettled([stdoutPromise, stderrPromise]),
+				streamTimeout
+			]);
 
 			// Close streams
 			stdoutStream.end();

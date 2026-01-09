@@ -45,7 +45,13 @@ export async function loadTestCases(
 
 	const file = Bun.file(testCasesFile);
 	const content = await file.text();
-	const data = JSON.parse(content);
+
+	let data;
+	try {
+		data = JSON.parse(content);
+	} catch (error) {
+		throw new Error(`Failed to parse JSON in ${testCasesFile}: ${error}`);
+	}
 
 	// Handle both dictionary format and list format
 	if (Array.isArray(data)) {

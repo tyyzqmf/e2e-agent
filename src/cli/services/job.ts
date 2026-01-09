@@ -611,10 +611,20 @@ export class JobService {
 	// ====================================
 
 	private rowToJob(row: JobRow): Job {
+		let envConfig = {};
+		if (row.env_config) {
+			try {
+				envConfig = JSON.parse(row.env_config);
+			} catch (error) {
+				console.error(`Failed to parse env_config for job ${row.job_id}:`, error);
+				// Use empty object as fallback
+			}
+		}
+
 		return {
 			jobId: row.job_id,
 			testSpec: row.test_spec,
-			envConfig: row.env_config ? JSON.parse(row.env_config) : {},
+			envConfig,
 			status: row.status as JobStatus,
 			createdAt: row.created_at,
 			startedAt: row.started_at,
