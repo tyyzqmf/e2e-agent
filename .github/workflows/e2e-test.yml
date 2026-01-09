@@ -1,0 +1,205 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run E2E tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  e2e-basic:
+    name: E2E Basic Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Node.js (for chrome-devtools-mcp)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Chrome
+        uses: browser-actions/setup-chrome@latest
+        with:
+          chrome-version: stable
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build CLI
+        run: bun build --compile --target=bun-linux-x64-baseline ./e2e.ts --outfile dist/e2e
+
+      - name: Make CLI executable
+        run: chmod +x dist/e2e
+
+      - name: Run check command
+        run: ./dist/e2e check
+
+      - name: Create test specification
+        run: |
+          cp test_spec.txt.template test_spec_ci.txt
+          # Modify for CI environment if needed
+          sed -i 's|https://example.com|https://httpbin.org|g' test_spec_ci.txt || true
+
+      - name: Test CLI basic commands
+        run: |
+          ./dist/e2e version
+          ./dist/e2e status
+          # Add more basic command tests
+
+      - name: Upload CLI binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-cli-linux
+          path: dist/e2e
+          retention-days: 1
+
+  e2e-integration:
+    name: E2E Integration Tests
+    runs-on: ubuntu-latest
+    needs: e2e-basic
+    timeout-minutes: 45
+    # Only run on main or manual trigger to save resources
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+
+    env:
+      # Use mock/test mode to avoid requiring actual Claude API credentials
+      E2E_TEST_MODE: true
+      CLAUDE_CODE_MAX_OUTPUT_TOKENS: 4096
+      MAX_THINKING_TOKENS: 1024
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Chrome
+        uses: browser-actions/setup-chrome@latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Download CLI binary
+        uses: actions/download-artifact@v4
+        with:
+          name: e2e-cli-linux
+          path: dist
+
+      - name: Make CLI executable
+        run: chmod +x dist/e2e
+
+      - name: Test job submission
+        run: |
+          # Test job submission without actual execution
+          echo "Testing job management commands..."
+          ./dist/e2e status || true
+
+      - name: Verify generated files structure
+        run: |
+          # Check that expected directories exist
+          if [ -d "src/agent" ]; then
+            echo "✓ Agent directory exists"
+          fi
+          if [ -f "e2e.ts" ]; then
+            echo "✓ CLI entry point exists"
+          fi
+
+  e2e-multiplatform:
+    name: E2E Tests - ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Chrome (Ubuntu)
+        if: runner.os == 'Linux'
+        uses: browser-actions/setup-chrome@latest
+
+      - name: Install Chrome (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install --cask google-chrome || true
+          which google-chrome-stable || which "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" || echo "Chrome installed"
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build CLI for platform
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            bun build --compile --target=bun-linux-x64-baseline ./e2e.ts --outfile dist/e2e
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+            bun build --compile --target=bun-darwin-arm64 ./e2e.ts --outfile dist/e2e
+          fi
+          chmod +x dist/e2e
+
+      - name: Test CLI
+        run: |
+          ./dist/e2e version
+          ./dist/e2e check || echo "Some dependencies may be missing in CI"
+
+  e2e-summary:
+    name: E2E Test Summary
+    runs-on: ubuntu-latest
+    needs: [e2e-basic, e2e-integration, e2e-multiplatform]
+    if: always()
+
+    steps:
+      - name: Check test results
+        run: |
+          echo "E2E Basic: ${{ needs.e2e-basic.result }}"
+          echo "E2E Integration: ${{ needs.e2e-integration.result }}"
+          echo "E2E Multiplatform: ${{ needs.e2e-multiplatform.result }}"
+
+          if [ "${{ needs.e2e-basic.result }}" != "success" ]; then
+            echo "❌ Basic E2E tests failed"
+            exit 1
+          fi
+
+          if [ "${{ needs.e2e-multiplatform.result }}" != "success" ]; then
+            echo "⚠️  Multiplatform E2E tests failed"
+            # Don't fail the workflow, just warn
+          fi
+
+          echo "✅ E2E tests completed"

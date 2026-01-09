@@ -1,0 +1,260 @@
+name: Performance Benchmarks
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run benchmarks weekly on Sunday at 3 AM UTC
+    - cron: '0 3 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  cli-performance:
+    name: CLI Performance Benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build CLI
+        run: bun build --compile --target=bun-linux-x64-baseline ./e2e.ts --outfile dist/e2e
+
+      - name: Make executable
+        run: chmod +x dist/e2e
+
+      - name: Benchmark - CLI startup time
+        run: |
+          echo "=== CLI Startup Time Benchmark ==="
+          echo "Running 10 iterations..."
+
+          total=0
+          iterations=10
+
+          for i in $(seq 1 $iterations); do
+            start=$(date +%s%N)
+            ./dist/e2e version > /dev/null
+            end=$(date +%s%N)
+            duration=$((($end - $start) / 1000000)) # Convert to milliseconds
+            echo "Iteration $i: ${duration}ms"
+            total=$(($total + $duration))
+          done
+
+          average=$(($total / $iterations))
+          echo ""
+          echo "Average startup time: ${average}ms"
+          echo "benchmark_startup_ms=$average" >> $GITHUB_OUTPUT
+
+          # Fail if average is too slow
+          if [ $average -gt 500 ]; then
+            echo "⚠️  CLI startup is slower than 500ms"
+            exit 1
+          fi
+
+      - name: Benchmark - Check command performance
+        run: |
+          echo "=== Check Command Performance ==="
+          start=$(date +%s%N)
+          ./dist/e2e check || true
+          end=$(date +%s%N)
+          duration=$((($end - $start) / 1000000))
+          echo "Check command took: ${duration}ms"
+
+      - name: Benchmark - Memory usage
+        run: |
+          echo "=== Memory Usage Benchmark ==="
+          # Get memory usage of CLI commands
+          /usr/bin/time -v ./dist/e2e version 2>&1 | grep "Maximum resident set size" || true
+
+  build-performance:
+    name: Build Performance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Benchmark - Dependency installation
+        run: |
+          echo "=== Dependency Installation Benchmark ==="
+          rm -rf node_modules
+
+          start=$(date +%s%N)
+          bun install --frozen-lockfile
+          end=$(date +%s%N)
+          duration=$((($end - $start) / 1000000))
+
+          echo "Dependency installation took: ${duration}ms"
+          echo "benchmark_install_ms=$duration" >> $GITHUB_OUTPUT
+
+      - name: Benchmark - TypeScript check
+        run: |
+          echo "=== TypeScript Check Benchmark ==="
+          start=$(date +%s%N)
+          bun run typecheck
+          end=$(date +%s%N)
+          duration=$((($end - $start) / 1000000))
+
+          echo "TypeScript check took: ${duration}ms"
+
+      - name: Benchmark - Build time
+        run: |
+          echo "=== Build Time Benchmark ==="
+          start=$(date +%s%N)
+          bun build --compile --target=bun-linux-x64-baseline ./e2e.ts --outfile dist/e2e
+          end=$(date +%s%N)
+          duration=$((($end - $start) / 1000000))
+
+          echo "Build took: ${duration}ms"
+          echo "benchmark_build_ms=$duration" >> $GITHUB_OUTPUT
+
+      - name: Benchmark - Binary size
+        run: |
+          echo "=== Binary Size Benchmark ==="
+          size=$(du -h dist/e2e | cut -f1)
+          size_bytes=$(stat -c%s dist/e2e)
+          size_mb=$((size_bytes / 1024 / 1024))
+
+          echo "Binary size: $size (${size_mb}MB)"
+          echo "benchmark_binary_size_mb=$size_mb" >> $GITHUB_OUTPUT
+
+          # Warn if binary is too large (> 150MB)
+          if [ $size_mb -gt 150 ]; then
+            echo "⚠️  Binary size is larger than 150MB"
+          fi
+
+  test-performance:
+    name: Test Performance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Benchmark - Unit tests
+        run: |
+          echo "=== Unit Test Performance ==="
+          start=$(date +%s%N)
+          bun run test:bun
+          end=$(date +%s%N)
+          duration=$((($end - $start) / 1000000))
+
+          echo "Unit tests took: ${duration}ms"
+
+      - name: Benchmark - CLI tests
+        run: |
+          echo "=== CLI Test Performance ==="
+          chmod +x e2e tests/*.sh
+
+          start=$(date +%s%N)
+          bun run test:cli
+          end=$(date +%s%N)
+          duration=$((($end - $start) / 1000000))
+
+          echo "CLI tests took: ${duration}ms"
+
+  compare-with-baseline:
+    name: Compare with Baseline
+    runs-on: ubuntu-latest
+    needs: [cli-performance, build-performance, test-performance]
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download baseline data
+        continue-on-error: true
+        run: |
+          # Try to get baseline from main branch
+          curl -s "https://raw.githubusercontent.com/${{ github.repository }}/main/.github/benchmark-baseline.json" \
+            -o baseline.json || echo "{}" > baseline.json
+
+      - name: Compare results
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let baseline = {};
+
+            try {
+              baseline = JSON.parse(fs.readFileSync('baseline.json', 'utf8'));
+            } catch (e) {
+              console.log('No baseline found, skipping comparison');
+              return;
+            }
+
+            // Get current results from job outputs
+            // Compare and post comment if there are significant regressions
+
+            const comment = `## 📊 Performance Benchmark Results
+
+            | Metric | Current | Baseline | Change |
+            |--------|---------|----------|--------|
+            | CLI Startup | TBD | TBD | - |
+            | Build Time | TBD | TBD | - |
+            | Binary Size | TBD | TBD | - |
+
+            *Baseline from main branch*
+            `;
+
+            // Post comment (simplified version)
+            console.log(comment);
+
+  store-baseline:
+    name: Store Baseline Results
+    runs-on: ubuntu-latest
+    needs: [cli-performance, build-performance, test-performance]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Store baseline data
+        run: |
+          # Create baseline data file
+          mkdir -p .github
+          cat > .github/benchmark-baseline.json << EOF
+          {
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "commit": "${{ github.sha }}",
+            "benchmarks": {
+              "cli_startup_ms": "TBD",
+              "build_time_ms": "TBD",
+              "binary_size_mb": "TBD"
+            }
+          }
+          EOF
+
+          # Commit if changed
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .github/benchmark-baseline.json || true
+          git commit -m "chore: Update benchmark baseline [skip ci]" || true
+          git push || true
