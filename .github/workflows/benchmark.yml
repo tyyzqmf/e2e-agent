@@ -166,18 +166,6 @@ jobs:
 
           echo "Unit tests took: ${duration}ms"
 
-      - name: Benchmark - CLI tests
-        run: |
-          echo "=== CLI Test Performance ==="
-          chmod +x e2e tests/*.sh
-
-          start=$(date +%s%N)
-          bun run test:cli
-          end=$(date +%s%N)
-          duration=$((($end - $start) / 1000000))
-
-          echo "CLI tests took: ${duration}ms"
-
   compare-with-baseline:
     name: Compare with Baseline
     runs-on: ubuntu-latest

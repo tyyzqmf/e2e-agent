@@ -261,7 +261,7 @@ export async function runAutonomousTestingAgent(
 		const { options: sdkOptions } = await createSdkOptions({
 			projectDir,
 			model,
-			resumeSessionId,
+			...(resumeSessionId ? { resumeSessionId } : {}),
 		});
 
 		// Choose prompt based on session type
