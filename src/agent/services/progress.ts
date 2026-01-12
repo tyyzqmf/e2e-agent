@@ -96,7 +96,9 @@ export async function countTestCases(
 			notRun: testCases.filter((tc) => tc.status === "Not Run").length,
 		};
 	} catch (error) {
-		console.error(`[CRITICAL] Failed to read test cases from ${testCasesFile}: ${error}`);
+		console.error(
+			`[CRITICAL] Failed to read test cases from ${testCasesFile}: ${error}`,
+		);
 		console.error(
 			`[CRITICAL] Test progress tracking may be inaccurate. Check file permissions and JSON validity.`,
 		);

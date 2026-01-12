@@ -61,7 +61,12 @@ export interface JobRow {
  * Possible status values for a test case.
  * Note: "Running" is used by the server for display purposes during execution.
  */
-export type TestCaseStatus = "Not Run" | "Pass" | "Fail" | "Blocked" | "Running";
+export type TestCaseStatus =
+	| "Not Run"
+	| "Pass"
+	| "Fail"
+	| "Blocked"
+	| "Running";
 
 /**
  * Core test status values used by the agent (excludes "Running")

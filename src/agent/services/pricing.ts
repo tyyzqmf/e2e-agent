@@ -107,7 +107,9 @@ export class PricingCalculator {
 		}
 
 		// Cache is stale or missing - try to update from API (sync version)
-		console.warn(`[Pricing] Cache is stale or missing, using fallback rates...`);
+		console.warn(
+			`[Pricing] Cache is stale or missing, using fallback rates...`,
+		);
 		console.warn(
 			`[Pricing] Cost calculations may be inaccurate. Run with network access to update pricing cache.`,
 		);

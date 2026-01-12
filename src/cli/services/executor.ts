@@ -279,16 +279,22 @@ export class TestExecutor {
 						stdoutStream.write(chunk);
 					}
 				} catch (error) {
-					const errorMsg = error instanceof Error ? error.message : String(error);
+					const errorMsg =
+						error instanceof Error ? error.message : String(error);
 					// Only suppress expected "stream closed" errors
 					if (
 						!errorMsg.includes("stream") &&
 						!errorMsg.includes("closed") &&
 						!errorMsg.includes("EPIPE")
 					) {
-						log("WARN", `Failed to capture stdout for job ${jobId}: ${errorMsg}`);
+						log(
+							"WARN",
+							`Failed to capture stdout for job ${jobId}: ${errorMsg}`,
+						);
 						// Write error marker to log file so it's visible
-						stdoutStream.write(`\n[STREAM ERROR] Output capture failed: ${errorMsg}\n`);
+						stdoutStream.write(
+							`\n[STREAM ERROR] Output capture failed: ${errorMsg}\n`,
+						);
 					}
 				}
 			};
@@ -302,15 +308,21 @@ export class TestExecutor {
 						stderrStream.write(chunk);
 					}
 				} catch (error) {
-					const errorMsg = error instanceof Error ? error.message : String(error);
+					const errorMsg =
+						error instanceof Error ? error.message : String(error);
 					// Only suppress expected "stream closed" errors
 					if (
 						!errorMsg.includes("stream") &&
 						!errorMsg.includes("closed") &&
 						!errorMsg.includes("EPIPE")
 					) {
-						log("WARN", `Failed to capture stderr for job ${jobId}: ${errorMsg}`);
-						stderrStream.write(`\n[STREAM ERROR] Error capture failed: ${errorMsg}\n`);
+						log(
+							"WARN",
+							`Failed to capture stderr for job ${jobId}: ${errorMsg}`,
+						);
+						stderrStream.write(
+							`\n[STREAM ERROR] Error capture failed: ${errorMsg}\n`,
+						);
 					}
 				}
 			};
