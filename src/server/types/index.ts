@@ -4,52 +4,23 @@
  * All TypeScript types and interfaces for the Bun-based web service.
  */
 
-// ============================================================================
-// Job Types
-// ============================================================================
+// Import shared types for use within this file
+import type {
+	Job as SharedJob,
+	JobRow as SharedJobRow,
+	JobStatus as SharedJobStatus,
+	TestCaseStatus as SharedTestCaseStatus,
+	TestPriority as SharedTestPriority,
+	TestStatus as SharedTestStatus,
+} from "../../shared/types.ts";
 
-/**
- * Possible states of a test job
- */
-export type JobStatus =
-	| "queued" // Waiting to execute
-	| "running" // Executing
-	| "completed" // Execution completed
-	| "failed" // Execution failed
-	| "stopped" // Stopped by user
-	| "cancelled"; // Cancelled from queue
-
-/**
- * Test job entity
- */
-export interface Job {
-	jobId: string;
-	testSpec: string;
-	envConfig: Record<string, string>;
-	status: JobStatus;
-	createdAt: string;
-	startedAt: string | null;
-	completedAt: string | null;
-	errorMessage: string | null;
-	stopRequested: boolean;
-	processPid: number | null;
-}
-
-/**
- * Database row representation of a job
- */
-export interface JobRow {
-	job_id: string;
-	test_spec: string;
-	env_config: string | null;
-	status: string;
-	created_at: string;
-	started_at: string | null;
-	completed_at: string | null;
-	error_message: string | null;
-	stop_requested: number;
-	process_pid: number | null;
-}
+// Re-export shared types for use throughout the server
+export type Job = SharedJob;
+export type JobRow = SharedJobRow;
+export type JobStatus = SharedJobStatus;
+export type TestCaseStatus = SharedTestCaseStatus;
+export type TestPriority = SharedTestPriority;
+export type TestStatus = SharedTestStatus;
 
 // ============================================================================
 // API Types
@@ -132,18 +103,10 @@ export interface ErrorResponse {
 // Test Report Types
 // ============================================================================
 
-/**
- * Test case status
- */
-export type TestCaseStatus =
-	| "Not Run"
-	| "Pass"
-	| "Fail"
-	| "Blocked"
-	| "Running";
+// TestCaseStatus is now imported from shared/types.ts
 
 /**
- * Individual test case
+ * Individual test case (server representation)
  */
 export interface TestCase {
 	id: string;
@@ -246,6 +209,7 @@ export interface AppConfig {
 	// Validation
 	TEST_SPEC_MIN_LENGTH: number;
 	TEST_SPEC_MAX_LENGTH: number;
+	MAX_REQUEST_BODY_SIZE: number;
 
 	// Logging
 	LOG_LEVEL: "debug" | "info" | "warn" | "error" | "silent";

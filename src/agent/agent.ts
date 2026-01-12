@@ -57,6 +57,21 @@ export function formatTokenCount(tokens: number): string {
 }
 
 /**
+ * Escape HTML special characters to prevent XSS attacks.
+ * Used when interpolating values into HTML templates.
+ */
+function escapeHtml(str: string): string {
+	const htmlEscapes: Record<string, string> = {
+		"&": "&amp;",
+		"<": "&lt;",
+		">": "&gt;",
+		'"': "&quot;",
+		"'": "&#39;",
+	};
+	return str.replace(/[&<>"']/g, (char) => htmlEscapes[char] || char);
+}
+
+/**
  * Update HTML report with final cost statistics from usage_statistics.json.
  * This is called after the test_report session completes to ensure accurate costs.
  *
@@ -104,11 +119,11 @@ export async function updateHtmlReportCosts(projectDir: string): Promise<void> {
 			0,
 		);
 
-		// Prepare replacement values
-		const totalCost = `$${summary.totalCostUsd.toFixed(2)}`;
-		const totalTokens = formatTokenCount(summary.totalTokens);
-		const totalDuration = formatDuration(totalDurationMs);
-		const totalSessions = summary.totalSessions.toString();
+		// Prepare replacement values with HTML escaping to prevent XSS
+		const totalCost = escapeHtml(`$${summary.totalCostUsd.toFixed(2)}`);
+		const totalTokens = escapeHtml(formatTokenCount(summary.totalTokens));
+		const totalDuration = escapeHtml(formatDuration(totalDurationMs));
+		const totalSessions = escapeHtml(summary.totalSessions.toString());
 
 		// Replace entire cost-grid section to handle any malformed AI-generated HTML
 		// This is more robust than trying to match individual cost-value/cost-label pairs
@@ -152,17 +167,18 @@ export async function updateHtmlReportCosts(projectDir: string): Promise<void> {
 	}
 }
 
-/**
- * Run the autonomous testing agent loop.
- *
- * @param options - Agent options
- * @returns Exit code: 0 for success, 1 for all tests blocked, 2 for idle loop detected
- */
-export async function runAutonomousTestingAgent(
-	options: AgentOptions,
-): Promise<number> {
-	const { projectDir, model = DEFAULT_MODEL, maxIterations = null } = options;
+// ============================================================================
+// Helper Functions for Agent Loop
+// ============================================================================
 
+/**
+ * Print the agent banner with configuration info.
+ */
+function printAgentBanner(
+	projectDir: string,
+	model: string,
+	maxIterations: number | null,
+): void {
 	console.log(`\n${"=".repeat(70)}`);
 	console.log("  AUTONOMOUS TESTING AGENT (TypeScript)");
 	console.log("=".repeat(70));
@@ -174,6 +190,25 @@ export async function runAutonomousTestingAgent(
 		console.log("Max iterations: Unlimited (will run until completion)");
 	}
 	console.log();
+}
+
+// ============================================================================
+// Main Agent Function
+// ============================================================================
+
+/**
+ * Run the autonomous testing agent loop.
+ *
+ * @param options - Agent options
+ * @returns Exit code: 0 for success, 1 for all tests blocked, 2 for idle loop detected
+ */
+export async function runAutonomousTestingAgent(
+	options: AgentOptions,
+): Promise<number> {
+	const { projectDir, model = DEFAULT_MODEL, maxIterations = null } = options;
+
+	// Print banner
+	printAgentBanner(projectDir, model, maxIterations);
 
 	// Create project directory
 	if (!existsSync(projectDir)) {

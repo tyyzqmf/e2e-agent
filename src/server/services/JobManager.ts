@@ -429,16 +429,19 @@ export class JobManager {
 	 * Convert database row to Job object
 	 */
 	private rowToJob(row: JobRow): Job {
-		let envConfig = {};
+		let envConfig: Record<string, string> = {};
 		if (row.env_config) {
 			try {
 				envConfig = JSON.parse(row.env_config);
 			} catch (error) {
 				logger.error(
-					`Failed to parse env_config for job ${row.job_id}:`,
-					error,
+					`[CRITICAL] Database corruption: Failed to parse env_config for job ${row.job_id}: ${error}`,
 				);
-				// Use empty object as fallback
+				logger.error(
+					`Job ${row.job_id} may be missing critical configuration. Consider deleting and resubmitting.`,
+				);
+				// Use empty object as fallback but mark error for visibility
+				envConfig = { _parse_error: "true" };
 			}
 		}
 

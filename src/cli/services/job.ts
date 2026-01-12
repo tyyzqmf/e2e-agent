@@ -8,45 +8,11 @@ import { Database } from "bun:sqlite";
 import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import type { Job, JobRow, JobStatus } from "../../shared/types.ts";
 import { colors, DATA_DIR, PROJECT_ROOT } from "../utils.ts";
 
-// ====================================
-// Types
-// ====================================
-
-export interface Job {
-	jobId: string;
-	testSpec: string;
-	envConfig: Record<string, string>;
-	status: JobStatus;
-	createdAt: string;
-	startedAt: string | null;
-	completedAt: string | null;
-	errorMessage: string | null;
-	stopRequested: boolean;
-	processPid: number | null;
-}
-
-export type JobStatus =
-	| "queued"
-	| "running"
-	| "completed"
-	| "failed"
-	| "stopped"
-	| "cancelled";
-
-interface JobRow {
-	job_id: string;
-	test_spec: string;
-	env_config: string | null;
-	status: string;
-	created_at: string;
-	started_at: string | null;
-	completed_at: string | null;
-	error_message: string | null;
-	stop_requested: number;
-	process_pid: number | null;
-}
+// Re-export shared types for consumers of this module
+export type { Job, JobStatus } from "../../shared/types.ts";
 
 interface CostStatistics {
 	totalInputTokens: number;
@@ -705,16 +671,19 @@ export class JobService {
 	// ====================================
 
 	private rowToJob(row: JobRow): Job {
-		let envConfig = {};
+		let envConfig: Record<string, string> = {};
 		if (row.env_config) {
 			try {
 				envConfig = JSON.parse(row.env_config);
 			} catch (error) {
 				console.error(
-					`Failed to parse env_config for job ${row.job_id}:`,
-					error,
+					`[CRITICAL] Database corruption: Failed to parse env_config for job ${row.job_id}: ${error}`,
 				);
-				// Use empty object as fallback
+				console.error(
+					`[CRITICAL] Job ${row.job_id} may be missing critical configuration. Consider deleting and resubmitting.`,
+				);
+				// Use empty object as fallback but mark error for visibility
+				envConfig = { _parse_error: "true" };
 			}
 		}
 

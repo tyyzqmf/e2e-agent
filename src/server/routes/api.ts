@@ -5,6 +5,7 @@
  */
 
 import type { BunRequest } from "bun";
+import { config } from "../config.ts";
 import type {
 	ErrorResponse,
 	JobStatus,
@@ -70,6 +71,22 @@ export function buildApiRoutes(services: ServiceContext) {
 		 */
 		"POST /api/jobs": async (req: Request) => {
 			try {
+				// Check Content-Length header for request body size limit
+				const contentLength = req.headers.get("content-length");
+				if (contentLength) {
+					const bodySize = parseInt(contentLength, 10);
+					if (bodySize > config.MAX_REQUEST_BODY_SIZE) {
+						logger.warn(
+							`Request body too large: ${bodySize} bytes (max: ${config.MAX_REQUEST_BODY_SIZE})`,
+						);
+						return errorResponse(
+							`Request body too large. Maximum size: ${Math.round(config.MAX_REQUEST_BODY_SIZE / 1024)}KB`,
+							"PAYLOAD_TOO_LARGE",
+							413,
+						);
+					}
+				}
+
 				const body = (await req.json()) as JobSubmitRequest;
 				const { test_spec, env_config = {} } = body;
 

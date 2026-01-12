@@ -278,8 +278,24 @@ export class TestExecutor {
 					for await (const chunk of stdout) {
 						stdoutStream.write(chunk);
 					}
-				} catch {
-					// Stream closed, ignore
+				} catch (error) {
+					const errorMsg =
+						error instanceof Error ? error.message : String(error);
+					// Only suppress expected "stream closed" errors
+					if (
+						!errorMsg.includes("stream") &&
+						!errorMsg.includes("closed") &&
+						!errorMsg.includes("EPIPE")
+					) {
+						log(
+							"WARN",
+							`Failed to capture stdout for job ${jobId}: ${errorMsg}`,
+						);
+						// Write error marker to log file so it's visible
+						stdoutStream.write(
+							`\n[STREAM ERROR] Output capture failed: ${errorMsg}\n`,
+						);
+					}
 				}
 			};
 
@@ -291,8 +307,23 @@ export class TestExecutor {
 					for await (const chunk of stderr) {
 						stderrStream.write(chunk);
 					}
-				} catch {
-					// Stream closed, ignore
+				} catch (error) {
+					const errorMsg =
+						error instanceof Error ? error.message : String(error);
+					// Only suppress expected "stream closed" errors
+					if (
+						!errorMsg.includes("stream") &&
+						!errorMsg.includes("closed") &&
+						!errorMsg.includes("EPIPE")
+					) {
+						log(
+							"WARN",
+							`Failed to capture stderr for job ${jobId}: ${errorMsg}`,
+						);
+						stderrStream.write(
+							`\n[STREAM ERROR] Error capture failed: ${errorMsg}\n`,
+						);
+					}
 				}
 			};
 

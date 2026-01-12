@@ -61,6 +61,7 @@ export const config: AppConfig = {
 	// Validation configuration
 	TEST_SPEC_MIN_LENGTH: envInt("TEST_SPEC_MIN_LENGTH", 10),
 	TEST_SPEC_MAX_LENGTH: envInt("TEST_SPEC_MAX_LENGTH", 100000),
+	MAX_REQUEST_BODY_SIZE: envInt("MAX_REQUEST_BODY_SIZE", 1024 * 1024), // 1MB default
 
 	// Logging configuration
 	LOG_LEVEL: (Bun.env.LOG_LEVEL as AppConfig["LOG_LEVEL"]) ?? "info",
