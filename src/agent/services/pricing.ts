@@ -85,6 +85,35 @@ export class PricingCalculator {
 	}
 
 	/**
+	 * Try to get rates from cache (valid or expired).
+	 * @returns Rates and source info, or null if not available
+	 */
+	private tryGetCachedRates(
+		model: string,
+		allowExpired: boolean,
+	): { rates: PricingRates; source: "valid_cache" | "expired_cache" } | null {
+		const isValid = this.isCacheValid();
+		if (!isValid && !allowExpired) {
+			return null;
+		}
+
+		const cachedPrices = this.loadCachedPrices();
+		if (!cachedPrices) {
+			return null;
+		}
+
+		const rates = this.extractModelRates(cachedPrices, model);
+		if (!rates) {
+			return null;
+		}
+
+		return {
+			rates,
+			source: isValid ? "valid_cache" : "expired_cache",
+		};
+	}
+
+	/**
 	 * Get pricing rates with automatic cache management.
 	 *
 	 * Priority order:
@@ -94,16 +123,11 @@ export class PricingCalculator {
 	 * 4. Fallback hardcoded rates (last resort)
 	 */
 	getRates(model: string): PricingRates {
-		// Try to load from cache if valid
-		if (this.isCacheValid()) {
-			const cachedPrices = this.loadCachedPrices();
-			if (cachedPrices) {
-				const rates = this.extractModelRates(cachedPrices, model);
-				if (rates) {
-					console.log(`[Pricing] Using cached rates for ${model}`);
-					return rates;
-				}
-			}
+		// Try valid cache first
+		const validCache = this.tryGetCachedRates(model, false);
+		if (validCache) {
+			console.log(`[Pricing] Using cached rates for ${model}`);
+			return validCache.rates;
 		}
 
 		// Cache is stale or missing - try to update from API (sync version)
@@ -114,14 +138,11 @@ export class PricingCalculator {
 			`[Pricing] Cost calculations may be inaccurate. Run with network access to update pricing cache.`,
 		);
 
-		// Check if old cache exists (even if expired)
-		const cachedPrices = this.loadCachedPrices();
-		if (cachedPrices) {
-			const rates = this.extractModelRates(cachedPrices, model);
-			if (rates) {
-				console.warn(`[Pricing] WARNING: Using expired cache for ${model}`);
-				return rates;
-			}
+		// Try expired cache
+		const expiredCache = this.tryGetCachedRates(model, true);
+		if (expiredCache) {
+			console.warn(`[Pricing] WARNING: Using expired cache for ${model}`);
+			return expiredCache.rates;
 		}
 
 		// No cache - use fallback
@@ -138,16 +159,11 @@ export class PricingCalculator {
 	 * Get pricing rates asynchronously (with API fetch)
 	 */
 	async getRatesAsync(model: string): Promise<PricingRates> {
-		// Try to load from cache if valid
-		if (this.isCacheValid()) {
-			const cachedPrices = this.loadCachedPrices();
-			if (cachedPrices) {
-				const rates = this.extractModelRates(cachedPrices, model);
-				if (rates) {
-					console.log(`[Pricing] Using cached rates for ${model}`);
-					return rates;
-				}
-			}
+		// Try valid cache first
+		const validCache = this.tryGetCachedRates(model, false);
+		if (validCache) {
+			console.log(`[Pricing] Using cached rates for ${model}`);
+			return validCache.rates;
 		}
 
 		// Cache is stale or missing - try to update from API
@@ -155,26 +171,20 @@ export class PricingCalculator {
 			`[Pricing] Cache is stale or missing, fetching latest prices...`,
 		);
 		if (await this.updatePriceCache()) {
-			const cachedPrices = this.loadCachedPrices();
-			if (cachedPrices) {
-				const rates = this.extractModelRates(cachedPrices, model);
-				if (rates) {
-					console.log(`[Pricing] Using fresh rates from API for ${model}`);
-					return rates;
-				}
+			const freshCache = this.tryGetCachedRates(model, false);
+			if (freshCache) {
+				console.log(`[Pricing] Using fresh rates from API for ${model}`);
+				return freshCache.rates;
 			}
 		}
 
-		// API fetch failed - check if old cache exists (even if expired)
-		const cachedPrices = this.loadCachedPrices();
-		if (cachedPrices) {
-			const rates = this.extractModelRates(cachedPrices, model);
-			if (rates) {
-				console.log(
-					`[Pricing] WARNING: API unavailable, using expired cache for ${model}`,
-				);
-				return rates;
-			}
+		// API fetch failed - try expired cache
+		const expiredCache = this.tryGetCachedRates(model, true);
+		if (expiredCache) {
+			console.log(
+				`[Pricing] WARNING: API unavailable, using expired cache for ${model}`,
+			);
+			return expiredCache.rates;
 		}
 
 		// No cache and API failed - use fallback
@@ -249,9 +259,6 @@ export class PricingCalculator {
 		}
 
 		try {
-			const _file = Bun.file(this.cacheFile);
-			// Check file size synchronously isn't easily done with Bun.file
-			// Use a simpler approach
 			const content = require("node:fs").readFileSync(this.cacheFile, "utf-8");
 			const cacheData = JSON.parse(content) as PricingCache & {
 				fetched_at?: number;
