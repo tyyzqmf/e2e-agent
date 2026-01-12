@@ -57,6 +57,21 @@ export function formatTokenCount(tokens: number): string {
 }
 
 /**
+ * Escape HTML special characters to prevent XSS attacks.
+ * Used when interpolating values into HTML templates.
+ */
+function escapeHtml(str: string): string {
+	const htmlEscapes: Record<string, string> = {
+		"&": "&amp;",
+		"<": "&lt;",
+		">": "&gt;",
+		'"': "&quot;",
+		"'": "&#39;",
+	};
+	return str.replace(/[&<>"']/g, (char) => htmlEscapes[char] || char);
+}
+
+/**
  * Update HTML report with final cost statistics from usage_statistics.json.
  * This is called after the test_report session completes to ensure accurate costs.
  *
@@ -104,11 +119,11 @@ export async function updateHtmlReportCosts(projectDir: string): Promise<void> {
 			0,
 		);
 
-		// Prepare replacement values
-		const totalCost = `$${summary.totalCostUsd.toFixed(2)}`;
-		const totalTokens = formatTokenCount(summary.totalTokens);
-		const totalDuration = formatDuration(totalDurationMs);
-		const totalSessions = summary.totalSessions.toString();
+		// Prepare replacement values with HTML escaping to prevent XSS
+		const totalCost = escapeHtml(`$${summary.totalCostUsd.toFixed(2)}`);
+		const totalTokens = escapeHtml(formatTokenCount(summary.totalTokens));
+		const totalDuration = escapeHtml(formatDuration(totalDurationMs));
+		const totalSessions = escapeHtml(summary.totalSessions.toString());
 
 		// Replace entire cost-grid section to handle any malformed AI-generated HTML
 		// This is more robust than trying to match individual cost-value/cost-label pairs
@@ -152,17 +167,18 @@ export async function updateHtmlReportCosts(projectDir: string): Promise<void> {
 	}
 }
 
-/**
- * Run the autonomous testing agent loop.
- *
- * @param options - Agent options
- * @returns Exit code: 0 for success, 1 for all tests blocked, 2 for idle loop detected
- */
-export async function runAutonomousTestingAgent(
-	options: AgentOptions,
-): Promise<number> {
-	const { projectDir, model = DEFAULT_MODEL, maxIterations = null } = options;
+// ============================================================================
+// Helper Functions for Agent Loop
+// ============================================================================
 
+/**
+ * Print the agent banner with configuration info.
+ */
+function printAgentBanner(
+	projectDir: string,
+	model: string,
+	maxIterations: number | null,
+): void {
 	console.log(`\n${"=".repeat(70)}`);
 	console.log("  AUTONOMOUS TESTING AGENT (TypeScript)");
 	console.log("=".repeat(70));
@@ -174,6 +190,100 @@ export async function runAutonomousTestingAgent(
 		console.log("Max iterations: Unlimited (will run until completion)");
 	}
 	console.log();
+}
+
+/**
+ * Print completion status when all tests are done.
+ */
+function printTestsCompletedBanner(stats: {
+	total: number;
+	passed: number;
+	failed: number;
+	blocked: number;
+}): void {
+	console.log(`\n${"=".repeat(70)}`);
+	console.log("  ALL TESTS COMPLETED!");
+	console.log("=".repeat(70));
+	console.log(`\n  Total: ${stats.total}`);
+	console.log(`  Passed: ${stats.passed}`);
+	console.log(`  Failed: ${stats.failed}`);
+	console.log(`  Blocked: ${stats.blocked}`);
+	console.log("\n  All test cases have been executed.");
+	console.log("=".repeat(70));
+}
+
+/**
+ * Print blocked status when all tests are blocked.
+ */
+function printAllBlockedBanner(stats: { total: number; blocked: number }): void {
+	console.log(`\n${"=".repeat(70)}`);
+	console.log("  ALL TESTS BLOCKED!");
+	console.log("=".repeat(70));
+	console.log(`\n  Total: ${stats.total}`);
+	console.log(`  Blocked: ${stats.blocked}`);
+	console.log("\n  Cannot proceed due to blocking issues.");
+	console.log("=".repeat(70));
+}
+
+/**
+ * Print idle loop detection warning.
+ */
+function printIdleLoopBanner(
+	maxNoProgressSessions: number,
+	notRunCount: number,
+): void {
+	console.log(`\n${"=".repeat(70)}`);
+	console.log("  IDLE LOOP DETECTED!");
+	console.log("=".repeat(70));
+	console.log(
+		`\n  ${maxNoProgressSessions} consecutive sessions with no test progress.`,
+	);
+	console.log(`  Remaining "Not Run" tests: ${notRunCount}`);
+	console.log("\n  Possible causes:");
+	console.log(
+		'    - Agent may be stuck due to "MISSION ACCOMPLISHED" in claude-progress.txt',
+	);
+	console.log("    - Blocking defects preventing test execution");
+	console.log("    - Environment issues preventing browser automation");
+	console.log("\n  Recommended actions:");
+	console.log(
+		"    1. Review claude-progress.txt and remove premature completion claims",
+	);
+	console.log("    2. Check test_cases.json for remaining Not Run tests");
+	console.log("    3. Restart the agent after addressing issues");
+	console.log("=".repeat(70));
+}
+
+/**
+ * Print final summary and instructions.
+ */
+function printFinalInstructions(projectDir: string): void {
+	console.log(`\n${"-".repeat(70)}`);
+	console.log("  TO VIEW TEST REPORTS:");
+	console.log("-".repeat(70));
+	console.log(`\n  cd ${projectDir}/test-reports`);
+	console.log("  # Open the HTML report viewer in a browser");
+	console.log("-".repeat(70));
+	console.log("\nDone!");
+}
+
+// ============================================================================
+// Main Agent Function
+// ============================================================================
+
+/**
+ * Run the autonomous testing agent loop.
+ *
+ * @param options - Agent options
+ * @returns Exit code: 0 for success, 1 for all tests blocked, 2 for idle loop detected
+ */
+export async function runAutonomousTestingAgent(
+	options: AgentOptions,
+): Promise<number> {
+	const { projectDir, model = DEFAULT_MODEL, maxIterations = null } = options;
+
+	// Print banner
+	printAgentBanner(projectDir, model, maxIterations);
 
 	// Create project directory
 	if (!existsSync(projectDir)) {

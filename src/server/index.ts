@@ -91,17 +91,35 @@ function createRequestHandler(
 			return response;
 		} catch (error) {
 			const duration = Math.round(performance.now() - startTime);
-			logger.error(`Request error: ${method} ${path}`, error);
+			// Generate request ID for error correlation
+			const requestId = crypto.randomUUID().slice(0, 8);
+			logger.error(`Request ${requestId} error: ${method} ${path}`, error);
 			logger.request(method, path, 500, duration);
+
+			// Determine appropriate error response based on error type
+			let errorMessage = "Internal Server Error";
+			let errorCode = "INTERNAL_ERROR";
+			let statusCode = 500;
+
+			if (error instanceof SyntaxError) {
+				errorMessage = "Invalid JSON in request body";
+				errorCode = "INVALID_JSON";
+				statusCode = 400;
+			} else if (error instanceof TypeError) {
+				errorMessage = "Invalid request format";
+				errorCode = "INVALID_REQUEST";
+				statusCode = 400;
+			}
 
 			return new Response(
 				JSON.stringify({
 					success: false,
-					error: "Internal Server Error",
-					code: "INTERNAL_ERROR",
+					error: errorMessage,
+					code: errorCode,
+					request_id: requestId, // Helps users report issues
 				}),
 				{
-					status: 500,
+					status: statusCode,
 					headers: { "Content-Type": "application/json" },
 				},
 			);

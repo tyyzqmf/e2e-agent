@@ -107,21 +107,27 @@ export class PricingCalculator {
 		}
 
 		// Cache is stale or missing - try to update from API (sync version)
-		console.log(`[Pricing] Cache is stale or missing, using fallback rates...`);
+		console.warn(`[Pricing] Cache is stale or missing, using fallback rates...`);
+		console.warn(
+			`[Pricing] Cost calculations may be inaccurate. Run with network access to update pricing cache.`,
+		);
 
 		// Check if old cache exists (even if expired)
 		const cachedPrices = this.loadCachedPrices();
 		if (cachedPrices) {
 			const rates = this.extractModelRates(cachedPrices, model);
 			if (rates) {
-				console.log(`[Pricing] WARNING: Using expired cache for ${model}`);
+				console.warn(`[Pricing] WARNING: Using expired cache for ${model}`);
 				return rates;
 			}
 		}
 
 		// No cache - use fallback
-		console.log(
+		console.warn(
 			`[Pricing] WARNING: No cache available, using hardcoded fallback rates for ${model}`,
+		);
+		console.warn(
+			`[Pricing] This may result in significantly inaccurate cost estimates.`,
 		);
 		return this.getFallbackRates(model);
 	}
@@ -259,7 +265,13 @@ export class PricingCalculator {
 			const ageHours = (Date.now() - fetchedAt) / 3600000;
 
 			return ageHours < this.cacheValidityHours;
-		} catch {
+		} catch (error) {
+			console.warn(
+				`[Pricing] Failed to validate cache: ${error instanceof Error ? error.message : error}`,
+			);
+			console.warn(
+				`[Pricing] Cache file may be corrupted. Consider deleting: ${this.cacheFile}`,
+			);
 			return false;
 		}
 	}
