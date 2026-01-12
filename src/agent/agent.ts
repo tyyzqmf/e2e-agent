@@ -378,12 +378,19 @@ export async function runAutonomousTestingAgent(
 		// Update session state for conditional resume (executor sessions only)
 		if (currentSessionType === "test_executor" && usageData?.sessionId) {
 			const postSessionStats = await progressTracker.countTestCases();
-			const sessionStatusMap: Record<SessionStatus, string> = {
+			// Map session status to state update values
+			// Note: updateSessionState only accepts "continue" | "context_overflow" | "error"
+			// COMPLETED is mapped to "error" as a safe fallback (shouldn't happen in executor sessions)
+			const sessionStatusMap: Record<
+				SessionStatus,
+				"continue" | "context_overflow" | "error"
+			> = {
 				[SessionStatus.CONTINUE]: "continue",
 				[SessionStatus.CONTEXT_OVERFLOW]: "context_overflow",
 				[SessionStatus.ERROR]: "error",
+				[SessionStatus.COMPLETED]: "error",
 			};
-			const statusForState = sessionStatusMap[status] ?? "error";
+			const statusForState = sessionStatusMap[status];
 
 			updateSessionState(
 				projectDir,

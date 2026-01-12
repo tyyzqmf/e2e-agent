@@ -259,9 +259,6 @@ export class PricingCalculator {
 		}
 
 		try {
-			const _file = Bun.file(this.cacheFile);
-			// Check file size synchronously isn't easily done with Bun.file
-			// Use a simpler approach
 			const content = require("node:fs").readFileSync(this.cacheFile, "utf-8");
 			const cacheData = JSON.parse(content) as PricingCache & {
 				fetched_at?: number;
