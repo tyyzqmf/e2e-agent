@@ -151,18 +151,34 @@ export class JobService {
 	private validateTestSpecContent(content: string): string | null {
 		// Check for dangerous patterns that could be used for code injection
 		const dangerousPatterns = [
+			// Template and code injection
 			{ pattern: /`[^`]*\$\{/g, name: "template injection" },
 			{ pattern: /\beval\s*\(/gi, name: "eval() call" },
 			{ pattern: /\bexec\s*\(/gi, name: "exec() call" },
+			// XSS patterns
 			{ pattern: /<script[\s>]/gi, name: "script tag" },
 			{ pattern: /javascript:/gi, name: "javascript: protocol" },
 			{ pattern: /on\w+\s*=/gi, name: "event handler" },
+			// Shell command substitution
+			{ pattern: /\$\([^)]*\)/g, name: "shell command substitution" },
+			{ pattern: /`[^`]+`/g, name: "backtick command execution" },
+			// Path traversal - check for sequences that could escape directories
+			{ pattern: /\.\.[\\/](?:\.\.[\\/])*/g, name: "path traversal" },
+			// Null byte injection
+			{ pattern: /\x00/g, name: "null byte injection" },
 		];
 
 		for (const { pattern, name } of dangerousPatterns) {
 			if (pattern.test(content)) {
 				return `Test specification contains potentially dangerous content: ${name}`;
 			}
+		}
+
+		// Check for shell metacharacters in suspicious contexts
+		// Allow these characters in normal text but flag concentrated use
+		const shellMetacharPattern = /[;&|]{2,}|[><]{2}|[|]{2}/g;
+		if (shellMetacharPattern.test(content)) {
+			return `Test specification contains potentially dangerous content: shell operator sequences`;
 		}
 
 		return null;
@@ -493,6 +509,31 @@ export class JobService {
 			});
 	}
 
+	/**
+	 * Verify if a PID belongs to our test process to prevent TOCTOU race conditions.
+	 * Checks /proc/[pid]/cmdline on Linux to verify the process identity.
+	 * Returns true if the process appears to be our test agent process.
+	 */
+	private isOurTestProcess(pid: number): boolean {
+		try {
+			// On Linux, read /proc/[pid]/cmdline to verify process identity
+			const cmdlinePath = `/proc/${pid}/cmdline`;
+			if (!existsSync(cmdlinePath)) {
+				return false;
+			}
+
+			const cmdline = readFileSync(cmdlinePath, "utf-8");
+			// Our test process should contain identifiable patterns
+			// The cmdline contains null-separated arguments
+			const identifiers = ["bun", "agent", "e2e-agent", "src/agent"];
+			return identifiers.some((id) => cmdline.toLowerCase().includes(id));
+		} catch {
+			// If we can't read /proc, fall back to assuming process is valid
+			// This handles non-Linux systems or permission issues
+			return true;
+		}
+	}
+
 	recoverOrphanJobs(): number {
 		const stmt = this.db.prepare(
 			`SELECT job_id, process_pid FROM jobs WHERE status = 'running'`,
@@ -509,11 +550,21 @@ export class JobService {
 
 		for (const job of runningJobs) {
 			let processAlive = false;
+			let isOurProcess = false;
 
 			if (job.process_pid) {
 				try {
 					process.kill(job.process_pid, 0);
 					processAlive = true;
+					// Additional validation: verify it's actually our test process
+					// This prevents TOCTOU race conditions where a PID could be reused
+					isOurProcess = this.isOurTestProcess(job.process_pid);
+					if (processAlive && !isOurProcess) {
+						console.warn(
+							`[Warning] Job ${job.job_id} process ${job.process_pid} exists but doesn't appear to be our test process. Marking for recovery.`,
+						);
+						processAlive = false; // Treat as dead since it's not our process
+					}
 				} catch (error) {
 					// Distinguish between ESRCH (process doesn't exist) and EPERM (permission denied)
 					// EPERM means the process exists but is owned by another user - should NOT recover
