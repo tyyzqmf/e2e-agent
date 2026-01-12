@@ -16,48 +16,48 @@ export type TestStatus = "Not Run" | "Pass" | "Fail" | "Blocked";
 export type TestPriority = "Critical" | "High" | "Medium" | "Low";
 
 /**
- * A single step in a test case
+ * A single step in a test case (immutable)
  */
 export interface TestStep {
-	stepNumber: number;
-	action: string;
-	expectedResult: string;
+	readonly stepNumber: number;
+	readonly action: string;
+	readonly expectedResult: string;
 }
 
 /**
- * A test case definition
+ * A test case definition (immutable except for actualResult and status)
  */
 export interface TestCase {
-	caseId: string;
-	title: string;
-	description: string;
-	preconditions: string[];
-	steps: TestStep[];
-	expectedResult: string;
-	actualResult?: string;
-	status: TestStatus;
-	priority: TestPriority;
-	category: string;
+	readonly caseId: string;
+	readonly title: string;
+	readonly description: string;
+	readonly preconditions: readonly string[];
+	readonly steps: readonly TestStep[];
+	readonly expectedResult: string;
+	actualResult?: string; // Mutable: set during execution
+	status: TestStatus; // Mutable: updated during execution
+	readonly priority: TestPriority;
+	readonly category: string;
 }
 
 /**
- * Statistics for test case execution
+ * Statistics for test case execution (snapshot, immutable after creation)
  */
 export interface TestCaseStats {
-	total: number;
-	passed: number;
-	failed: number;
-	blocked: number;
-	notRun: number;
+	readonly total: number;
+	readonly passed: number;
+	readonly failed: number;
+	readonly blocked: number;
+	readonly notRun: number;
 }
 
 /**
  * Test cases file format (JSON structure)
  */
 export interface TestCasesFile {
-	testSuite?: string;
-	generatedAt?: string;
-	testCases?: TestCase[];
+	readonly testSuite?: string;
+	readonly generatedAt?: string;
+	readonly testCases?: readonly TestCase[];
 	// Alternative format: array at root level
 }
 

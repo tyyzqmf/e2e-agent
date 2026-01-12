@@ -6,6 +6,7 @@
  * This module provides authentication and options building.
  */
 
+import { execSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -266,10 +267,6 @@ function convertMcpServersToSdkFormat(
  * Searches common installation locations
  */
 function findClaudeCodeExecutable(): string | undefined {
-	const { execSync } = require("node:child_process");
-	const { existsSync } = require("node:fs");
-	const { join } = require("node:path");
-
 	// Common paths to check
 	const commonPaths = [
 		// User's npm global bin

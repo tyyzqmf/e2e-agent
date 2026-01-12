@@ -71,6 +71,37 @@ function escapeHtml(str: string): string {
 	return str.replace(/[&<>"']/g, (char) => htmlEscapes[char] || char);
 }
 
+// ============================================================================
+// Console Output Helpers
+// ============================================================================
+
+const SEPARATOR_WIDTH = 70;
+
+/**
+ * Print a section header with double-line separators (=)
+ */
+function printSectionHeader(title: string): void {
+	console.log(`\n${"=".repeat(SEPARATOR_WIDTH)}`);
+	console.log(`  ${title}`);
+	console.log("=".repeat(SEPARATOR_WIDTH));
+}
+
+/**
+ * Print a subsection header with single-line separators (-)
+ */
+function printSubsectionHeader(title: string): void {
+	console.log(`\n${"-".repeat(SEPARATOR_WIDTH)}`);
+	console.log(`  ${title}`);
+	console.log("-".repeat(SEPARATOR_WIDTH));
+}
+
+/**
+ * Print a closing separator (=)
+ */
+function printSectionFooter(): void {
+	console.log("=".repeat(SEPARATOR_WIDTH));
+}
+
 /**
  * Update HTML report with final cost statistics from usage_statistics.json.
  * This is called after the test_report session completes to ensure accurate costs.
@@ -179,9 +210,7 @@ function printAgentBanner(
 	model: string,
 	maxIterations: number | null,
 ): void {
-	console.log(`\n${"=".repeat(70)}`);
-	console.log("  AUTONOMOUS TESTING AGENT (TypeScript)");
-	console.log("=".repeat(70));
+	printSectionHeader("AUTONOMOUS TESTING AGENT (TypeScript)");
 	console.log(`\nProject directory: ${projectDir}`);
 	console.log(`Model: ${model}`);
 	if (maxIterations) {
@@ -229,14 +258,12 @@ export async function runAutonomousTestingAgent(
 
 	if (isFirstRun) {
 		console.log("Fresh start - will use test planner agent");
-		console.log();
-		console.log("=".repeat(70));
-		console.log("  NOTE: First session takes 5-10 minutes!");
+		printSectionHeader("NOTE: First session takes 5-10 minutes!");
 		console.log("  The agent is generating 50 detailed test cases.");
 		console.log(
 			"  This may appear to hang - it's working. Watch for [Tool: ...] output.",
 		);
-		console.log("=".repeat(70));
+		printSectionFooter();
 		console.log();
 		setupProjectDirectory(projectDir);
 	} else {
@@ -351,12 +378,12 @@ export async function runAutonomousTestingAgent(
 		// Update session state for conditional resume (executor sessions only)
 		if (currentSessionType === "test_executor" && usageData?.sessionId) {
 			const postSessionStats = await progressTracker.countTestCases();
-			const statusForState =
-				status === SessionStatus.CONTINUE
-					? "continue"
-					: status === SessionStatus.CONTEXT_OVERFLOW
-						? "context_overflow"
-						: "error";
+			const sessionStatusMap: Record<SessionStatus, string> = {
+				[SessionStatus.CONTINUE]: "continue",
+				[SessionStatus.CONTEXT_OVERFLOW]: "context_overflow",
+				[SessionStatus.ERROR]: "error",
+			};
+			const statusForState = sessionStatusMap[status] ?? "error";
 
 			updateSessionState(
 				projectDir,
@@ -380,25 +407,21 @@ export async function runAutonomousTestingAgent(
 			if (stats.notRun === 0 && stats.total > 0) {
 				if (stats.blocked === stats.total) {
 					allTestsBlocked = true;
-					console.log(`\n${"=".repeat(70)}`);
-					console.log("  ALL TESTS BLOCKED!");
-					console.log("=".repeat(70));
+					printSectionHeader("ALL TESTS BLOCKED!");
 					console.log(`\n  Total: ${stats.total}`);
 					console.log(`  Blocked: ${stats.blocked}`);
 					console.log("\n  Cannot proceed due to blocking issues.");
-					console.log("=".repeat(70));
+					printSectionFooter();
 					break;
 				}
 
-				console.log(`\n${"=".repeat(70)}`);
-				console.log("  ALL TESTS COMPLETED!");
-				console.log("=".repeat(70));
+				printSectionHeader("ALL TESTS COMPLETED!");
 				console.log(`\n  Total: ${stats.total}`);
 				console.log(`  Passed: ${stats.passed}`);
 				console.log(`  Failed: ${stats.failed}`);
 				console.log(`  Blocked: ${stats.blocked}`);
 				console.log("\n  All test cases have been executed.");
-				console.log("=".repeat(70));
+				printSectionFooter();
 				break;
 			}
 
@@ -412,9 +435,7 @@ export async function runAutonomousTestingAgent(
 
 					if (consecutiveNoProgress >= MAX_NO_PROGRESS_SESSIONS) {
 						idleLoopDetected = true;
-						console.log(`\n${"=".repeat(70)}`);
-						console.log("  IDLE LOOP DETECTED!");
-						console.log("=".repeat(70));
+						printSectionHeader("IDLE LOOP DETECTED!");
 						console.log(
 							`\n  ${MAX_NO_PROGRESS_SESSIONS} consecutive sessions with no test progress.`,
 						);
@@ -435,7 +456,7 @@ export async function runAutonomousTestingAgent(
 							"    2. Check test_cases.json for remaining Not Run tests",
 						);
 						console.log("    3. Restart the agent after addressing issues");
-						console.log("=".repeat(70));
+						printSectionFooter();
 						break;
 					}
 				} else {
@@ -463,18 +484,14 @@ export async function runAutonomousTestingAgent(
 	}
 
 	// Final summary
-	console.log(`\n${"=".repeat(70)}`);
-	console.log("  TESTING SESSION COMPLETE");
-	console.log("=".repeat(70));
+	printSectionHeader("TESTING SESSION COMPLETE");
 	console.log(`\nProject directory: ${projectDir}`);
 	await printTestProgressSummary(projectDir);
 
 	// Run report agent to generate final reports (only if tests were executed)
 	const finalStats = await progressTracker.countTestCases();
 	if (finalStats.total > 0 && finalStats.notRun === 0 && !idleLoopDetected) {
-		console.log(`\n${"=".repeat(70)}`);
-		console.log("  GENERATING FINAL REPORTS");
-		console.log("=".repeat(70));
+		printSectionHeader("GENERATING FINAL REPORTS");
 
 		try {
 			// Create SDK options for report session
@@ -526,12 +543,10 @@ export async function runAutonomousTestingAgent(
 	}
 
 	// Print instructions
-	console.log(`\n${"-".repeat(70)}`);
-	console.log("  TO VIEW TEST REPORTS:");
-	console.log("-".repeat(70));
+	printSubsectionHeader("TO VIEW TEST REPORTS:");
 	console.log(`\n  cd ${projectDir}/test-reports`);
 	console.log("  # Open the HTML report viewer in a browser");
-	console.log("-".repeat(70));
+	console.log(`${"-".repeat(SEPARATOR_WIDTH)}`);
 
 	console.log("\nDone!");
 

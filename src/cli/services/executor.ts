@@ -79,14 +79,15 @@ const defaultConfig: ExecutorConfig = {
 // Logger
 // ====================================
 
+const logColorMap: Record<"INFO" | "WARN" | "ERROR", string> = {
+	ERROR: colors.red,
+	WARN: colors.yellow,
+	INFO: colors.blue,
+};
+
 function log(level: "INFO" | "WARN" | "ERROR", message: string): void {
 	const timestamp = new Date().toISOString();
-	const color =
-		level === "ERROR"
-			? colors.red
-			: level === "WARN"
-				? colors.yellow
-				: colors.blue;
+	const color = logColorMap[level];
 	console.log(`${timestamp} [${color}${level}${colors.reset}] ${message}`);
 }
 
