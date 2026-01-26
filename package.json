@@ -27,7 +27,7 @@
     "@aws-sdk/credential-providers": "^3.700.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.3.11",
+    "@biomejs/biome": "2.3.12",
     "@types/bun": "latest",
     "typescript": "^5.0.0"
   }
